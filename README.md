@@ -16,7 +16,7 @@ Managing multiple online accounts often leads to password reuse and weak securit
 
 ## 🛠️ Tech Stack
 - **Language:** Python  
-- **GUI Framework:** Tkinter / PyQt  
+- **GUI Framework:** PyQt  
 - **Database:** SQLite  
 - **Security:** bcrypt, AES-256, Base64  
 - **Packaging:** PyInstaller  
