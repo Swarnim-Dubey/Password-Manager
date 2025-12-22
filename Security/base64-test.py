@@ -29,14 +29,19 @@ while True:
     ch = int(input("Enter choice : "))
 
     if ch == 1:
-        s = input("Enter the text top encode : ")
+        s = input("Enter the text to encode : ")
         out = encode_b64(s.encode("utf-8"))
         print(f"Encoded text = {out}")
 
     elif ch == 2:
-        s = input("Enter the text top encode : ")
+        s = input("Enter the text to decode : ")
         result = decode_b64(s)
         try:
             print(f"Decode text = {result.decode("utf-8")}")
         except:
-            ...
+            print("Not decodeabloe to text, raw bytes detected were : ", result)
+    elif ch == 3:
+        print("Bye!!")
+        break
+    else:
+        print("Wromg choice was entered")
