@@ -8,4 +8,3 @@ def verify_master_password():
 
 
 # --------- VERIFYING THE MASTER PASSWORD ---------
-
