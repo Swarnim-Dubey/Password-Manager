@@ -44,45 +44,47 @@ def decode_b64(txt: str) -> bytes:
 if __name__ == "__main__":
     print("-" * 20, "AES + BASE64 SECURITY SYSTEM", "-" * 20)
     print()
-
-    pwd = input("Enter MASTER password : ")
-    key = make_key(pwd)
+    key = input("Set the master password : ")
     print("Key generated successfully!\n")
-
+    pwd = input("\nEnter MASTER password : ")
+    key = make_key(pwd)
+    # key = 'hello@123'
     stored_b64 = None
+    if key == pwd :
+        while True:
+            print("\nWhat you want to do?")
+            print("1. Encrypt & Store")
+            print("2. Show Stored (Base64)")
+            print("3. Decode & Decrypt")
+            print("4. Quit")
 
-    while True:
-        print("\nWhat you want to do?")
-        print("1. Encrypt & Store")
-        print("2. Show Stored (Base64)")
-        print("3. Decode & Decrypt")
-        print("4. Quit")
+            choice = input("Enter choice : ")
 
-        choice = input("Enter choice : ")
+            if choice == "1":
+                txt = input("Enter text to encrypt and store : ")
+                enc_bytes = encrypt_text(txt, key)
+                stored_b64 = encode_b64(enc_bytes)
+                print("String stored successfully!")
 
-        if choice == "1":
-            txt = input("Enter text to encrypt and store : ")
-            enc_bytes = encrypt_text(txt, key)
-            stored_b64 = encode_b64(enc_bytes)
-            print("String stored successfully!")
+            elif choice == "2":
+                if stored_b64:
+                    print("Stored Base64 string :\n", stored_b64)
+                else:
+                    print("No string stored yet :(")
 
-        elif choice == "2":
-            if stored_b64:
-                print("Stored Base64 string :\n", stored_b64)
+            elif choice == "3":
+                if stored_b64:
+                    enc_bytes = decode_b64(stored_b64)
+                    dec_txt = decrypt_text(enc_bytes, key)
+                    print("Decoded & Decrypted text : ", dec_txt)
+                else:
+                    print("No string stored yet :(")
+
+            elif choice == "4":
+                print("Bye!")
+                break
+
             else:
-                print("No string stored yet :(")
-
-        elif choice == "3":
-            if stored_b64:
-                enc_bytes = decode_b64(stored_b64)
-                dec_txt = decrypt_text(enc_bytes, key)
-                print("Decoded & Decrypted text : ", dec_txt)
-            else:
-                print("No string stored yet :(")
-
-        elif choice == "4":
-            print("Bye!")
-            break
-
-        else:
-            print("Invalid option, try again.")
+                print("Invalid option, try again.")
+    else:
+        print("\nTHE MASTER PASSWORD DOES NOT MATCH")
