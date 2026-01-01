@@ -23,3 +23,10 @@ def setup_master_password():
     hashed = hash_password(pwd)
     store_master_hash(hashed)
     print("Master password have been saved successfully !!")
+
+def login():
+    stored_hash = get_master_hash()
+    pwd = input("Enter MASTER password : ")
+
+    if check_password(pwd, stored_hash):
+        ...
