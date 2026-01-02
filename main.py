@@ -18,7 +18,7 @@ def decode_b64(data):
 # ---------- Master Password ----------
 
 def setup_master_password():
-    print("-" * 15,"\nFirst time setup", "-" * 15)
+    print("-" * 15,"First time setup", "-" * 15)
     pwd = input("Create master password : ")
     hashed = hash_password(pwd)
     store_master_hash(hashed)
