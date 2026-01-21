@@ -23,6 +23,6 @@ if __name__ == "__main__":
     login_pwd = input("Enter master password : ")
 
     if check_password(login_pwd, stored_hash):
-        print("Login successful!")
+        print("Login successful! ✅")
     else:
-        print("Wrong password!")
+        print("Wrong password! 😑")
