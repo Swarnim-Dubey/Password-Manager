@@ -32,6 +32,13 @@ def login():
 
 # ---------- MAIN DASHBOARD ----------
 
+def get_creds(prompt : str)-> str:
+    while True:
+        value = input(prompt).strip()
+        if value:
+            return value
+        print("THE CREDENTIALS CANNOT BE EMPTY 😑")
+
 def dashboard(key: bytes):
     while True:
         print("\n----- DASHBOARD -----")
@@ -43,9 +50,9 @@ def dashboard(key: bytes):
         choice = input("Enter choice: ")
 
         if choice == "1":
-            service = input("Service Name : ")
-            username = input("Username : ")
-            password = input("Password : ")
+            service = get_creds("Service Name : ")
+            username = get_creds("Username : ")
+            password = get_creds("Password : ")
             encrypted = encrypt_text(password, key)
             encrypted_b64 = encode_b64(encrypted)
             add_credential(service, username, encrypted_b64)
@@ -62,7 +69,7 @@ def dashboard(key: bytes):
                 print(f"{service} | {username} | {decrypted}")
 
         elif choice == "3":
-            service = input("Service name to delete : ")
+            service = get_creds("Service name to delete : ")
             delete_credential(service)
             print("Credential deleted! 👍")
 
