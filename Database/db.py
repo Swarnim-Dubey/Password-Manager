@@ -89,18 +89,6 @@ def get_credentials():
     return rows
 
 
-def delete_credential(service: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "DELETE FROM credentials WHERE service = ?",
-        (service,)
-    )
-
-    conn.commit()
-    conn.close()
-
 def delete_cred_by_id(cred_id : int):
     conn = get_connection()
     cursor = conn.cursor()
