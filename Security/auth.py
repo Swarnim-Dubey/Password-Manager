@@ -14,7 +14,7 @@ def get_creds(prompt : str)-> str:
         value = input(prompt).strip()
         if value:
             return value
-        print("THE CREDENTIALS CANNOT BE EMPTY 😑")
+        print("THE CREDENTIALS CANNOT BE EMPTY ")
 
 # --------- VERIFYING THE MASTER PASSWORD ---------
 
@@ -31,6 +31,6 @@ if __name__ == "__main__":
     login_pwd = get_creds("Enter master password : ")
 
     if check_password(login_pwd, stored_hash):
-        print("Login successful! ✅")
+        print("Login successful! ")
     else:
-        print("Wrong password! 😑")
+        print("Wrong password! ")
