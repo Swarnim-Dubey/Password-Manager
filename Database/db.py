@@ -93,7 +93,7 @@ def delete_cred_by_id(cred_id : int):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM credentials WHERE id = ?", (cred_id))
+    cursor.execute("DELETE FROM credentials WHERE id = ?", (cred_id,))
 
     conn.commit()
     conn.close()
