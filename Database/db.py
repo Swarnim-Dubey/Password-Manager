@@ -82,7 +82,7 @@ def get_credentials():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT service, username, password FROM credentials")
+    cursor.execute("SELECT id, service, username, password FROM credentials")
     rows = cursor.fetchall()
 
     conn.close()
@@ -97,6 +97,15 @@ def delete_credential(service: str):
         "DELETE FROM credentials WHERE service = ?",
         (service,)
     )
+
+    conn.commit()
+    conn.close()
+
+def delete_cred_by_id(cred_id : int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM credentials WHERE id = ?", (cred_id))
 
     conn.commit()
     conn.close()
