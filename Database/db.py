@@ -1,78 +1,91 @@
+import os
+import sys
 import sqlite3
-from pathlib import Path
 
-DB_NAME = "password-manager.db"
+# ---------- BASE DIRECTORY ----------
+if getattr(sys, "frozen", False):
+    # Running as PyInstaller exe
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    # Running as normal Python script
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DB_PATH = os.path.join(BASE_DIR, "passwords.db")
 
 
+# ---------- CONNECTION ----------
 def get_connection():
-    return sqlite3.connect(DB_NAME)
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 
 # ---------- DATABASE SETUP ----------
-
 def init_db():
     conn = get_connection()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    # Table for Master Password
-    cursor.execute("""
+    # Master password table
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS master_auth (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY CHECK (id = 1),
             password_hash BLOB NOT NULL
         )
     """)
 
-    # Table for the credentials
-    cursor.execute("""
+    # Credentials table
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS credentials (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             service TEXT NOT NULL,
             username TEXT NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            category TEXT NOT NULL
         )
     """)
+
     conn.commit()
     conn.close()
 
 
 # ---------- MASTER PASSWORD ----------
-
 def store_master_hash(password_hash: bytes):
+    """
+    Stores or replaces the single master password hash.
+    """
     conn = get_connection()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    # Ensure only ONE master password exists
-    cursor.execute("DELETE FROM master_auth")
-
-    cursor.execute(
-        "INSERT INTO master_auth (password_hash) VALUES (?)",
+    cur.execute(
+        "INSERT OR REPLACE INTO master_auth (id, password_hash) VALUES (1, ?)",
         (password_hash,)
     )
+
     conn.commit()
     conn.close()
 
 
 def get_master_hash():
+    """
+    Returns stored master password hash or None if not set.
+    """
     conn = get_connection()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    cursor.execute("SELECT password_hash FROM master_auth LIMIT 1")
-    row = cursor.fetchone()
+    cur.execute("SELECT password_hash FROM master_auth WHERE id = 1")
+    row = cur.fetchone()
 
     conn.close()
     return row[0] if row else None
 
 
 # ---------- CREDENTIALS ----------
-
-def add_credential(service: str, username: str, password_b64: str):
+def add_credential(service, username, password, category):
     conn = get_connection()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO credentials (service, username, password)
-        VALUES (?, ?, ?)
-    """, (service, username, password_b64))
+    cur.execute(
+        "INSERT INTO credentials (service, username, password, category) VALUES (?, ?, ?, ?)",
+        (service, username, password, category)
+    )
 
     conn.commit()
     conn.close()
@@ -80,28 +93,47 @@ def add_credential(service: str, username: str, password_b64: str):
 
 def get_credentials():
     conn = get_connection()
-    cursor = conn.cursor()
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
 
-    cursor.execute("SELECT id, service, username, password FROM credentials")
-    rows = cursor.fetchall()
+    cur.execute(
+        "SELECT id, service, username, password, category FROM credentials"
+    )
 
+    rows = cur.fetchall()
     conn.close()
-    return rows
+
+    return [dict(row) for row in rows]
 
 
-def delete_cred_by_id(cred_id : int):
+def update_credential(cred_id, service, username, password, category):
     conn = get_connection()
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    cursor.execute("DELETE FROM credentials WHERE id = ?", (cred_id,))
+    cur.execute("""
+        UPDATE credentials
+        SET service = ?, username = ?, password = ?, category = ?
+        WHERE id = ?
+    """, (service, username, password, category, cred_id))
 
     conn.commit()
     conn.close()
 
 
-# ---------- TESTING ----------
+def delete_credential(cred_id):
+    conn = get_connection()
+    cur = conn.cursor()
 
-if __name__ == "__main__":
-    print("Initializing database...")
-    init_db()
-    print("Database is ready !")
+    cur.execute("DELETE FROM credentials WHERE id = ?", (cred_id,))
+
+    conn.commit()
+    conn.close()
+
+
+# ---------- COMPATIBILITY ALIASES ----------
+def get_master_password_hash():
+    return get_master_hash()
+
+
+def set_master_password_hash(password_hash: bytes):
+    store_master_hash(password_hash)
