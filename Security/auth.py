@@ -1,36 +1,47 @@
-import bcrypt
+import os
+import base64
+import hashlib
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
+from cryptography.fernet import Fernet
 
 
-# Make a hashed version of the password
-def hash_password(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+# ---------------- PASSWORD HASHING ----------------
 
-# Check if a password matches the stored one or not
-def check_password(password, stored_hash):
-    return bcrypt.checkpw(password.encode(), stored_hash)
+def hash_password(password: str) -> bytes:
+    return hashlib.sha256(password.encode()).digest()
 
-def get_creds(prompt : str)-> str:
-    while True:
-        value = input(prompt).strip()
-        if value:
-            return value
-        print("THE CREDENTIALS CANNOT BE EMPTY ")
 
-# --------- VERIFYING THE MASTER PASSWORD ---------
+def verify_password(password: str, stored_hash: bytes) -> bool:
+    return hash_password(password) == stored_hash
 
-if __name__ == "__main__":
-    print("-------- MASTER PASSWORD TEST --------")
 
-    # First time setup
-    print("------ FIRST TIME SETUP ------")
-    pwd = get_creds("\nCreate MASTER password : ")
-    stored_hash = hash_password(pwd)
-    print("Password saved securely!")
+# ---------------- KEY DERIVATION ----------------
 
-    # Login
-    login_pwd = get_creds("Enter master password : ")
+def derive_key(password: str) -> bytes:
+    salt = b"password-manager-salt"
 
-    if check_password(login_pwd, stored_hash):
-        print("Login successful! ")
-    else:
-        print("Wrong password! ")
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=200_000,
+        backend=default_backend()
+    )
+
+    key = kdf.derive(password.encode())
+    return base64.urlsafe_b64encode(key)
+
+
+# ---------------- ENCRYPT / DECRYPT ----------------
+
+def encrypt_data(plain_text: str, key: bytes) -> bytes:
+    f = Fernet(key)
+    return f.encrypt(plain_text.encode())
+
+
+def decrypt_data(cipher_text: bytes, key: bytes) -> str:
+    f = Fernet(key)
+    return f.decrypt(cipher_text).decode()
