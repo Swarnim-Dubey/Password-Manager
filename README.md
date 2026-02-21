@@ -85,14 +85,9 @@ This application solves that problem by providing a **locally encrypted vault** 
 The following enhancements are planned for future releases:
 
 - 🔑 Built-in strong password generator
-- 🔄 Optional encrypted cloud synchronization
 - ⏱ Automatic vault locking after inactivity
 - 📋 Clipboard auto-clear after copying passwords
-- 🧠 Security audit & threat modeling
-- 🧩 Plugin system for extensibility
-- 🌐 Browser extension integration
 - 📱 Mobile companion application
-- 🧾 Import/export support (CSV / encrypted backup)
 - 🎨 Theme customization (light/dark modes)
 
 ---
