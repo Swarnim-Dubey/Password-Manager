@@ -7,9 +7,11 @@ from Database.db import add_credential
 
 
 class AddCredentialWindow(QDialog):
-    def __init__(self, key, parent=None):
+    def __init__(self, app_username, key, parent=None):
         super().__init__(parent)
+        self.app_username = app_username
         self.key = key
+
         self.setWindowTitle("Add Credential")
         self.setFixedSize(400, 420)
         self.build_ui()
@@ -57,33 +59,6 @@ class AddCredentialWindow(QDialog):
         save_button.clicked.connect(self.save_credential)
         layout.addWidget(save_button)
 
-        self.setStyleSheet("""
-            QLineEdit, QComboBox {
-                padding: 10px;
-                font-size: 14px;
-                border-radius: 8px;
-                background-color: #2A2A3F;
-                color: #EAEAEA;
-            }
-            QLineEdit:focus, QComboBox:focus {
-                border: 2px solid #3A86FF;
-            }
-            QPushButton {
-                background-color: #3A86FF;
-                color: white;
-                font-size: 14px;
-                border-radius: 10px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #5A9BFF;
-            }
-            QLabel {
-                font-size: 13px;
-                color: #EAEAEA;
-            }
-        """)
-
     def toggle_custom_category(self, text):
         self.custom_category_input.setVisible(text == "Other")
 
@@ -98,14 +73,18 @@ class AddCredentialWindow(QDialog):
             category = self.category_combo.currentText()
 
         if not service or not username or not password or not category:
-            self.show_message("Error", "All fields must be filled")
+            QMessageBox.warning(self, "Error", "All fields must be filled")
             return
 
         encrypted = encrypt_data(password, self.key)
-        add_credential(service, username, encrypted, category)
 
-        self.show_message("Success", f"Credential for '{service}' added.")
+        add_credential(
+            self.app_username,
+            service,
+            username,
+            encrypted,
+            category
+        )
+
+        QMessageBox.information(self, "Success", f"Credential for '{service}' added.")
         self.accept()
-
-    def show_message(self, title, message):
-        QMessageBox.information(self, title, message)
