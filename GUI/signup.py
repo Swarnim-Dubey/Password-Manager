@@ -4,17 +4,16 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from Security.auth import authenticate_user   # ✅ FIXED IMPORT
 from Database.db import create_user
-from GUI.vault import VaultWindow
-from GUI.signup import SignupWindow
 
 
-class LoginWindow(QWidget):
-    def __init__(self):
+class SignupWindow(QWidget):
+    def __init__(self, login_window):
         super().__init__()
 
-        self.setWindowTitle("SecureVault")
+        self.login_window = login_window
+
+        self.setWindowTitle("Create Account")
         self.setFixedSize(420, 520)
 
         self.setStyleSheet("""
@@ -75,7 +74,7 @@ class LoginWindow(QWidget):
         layout = QVBoxLayout(card)
         layout.setSpacing(12)
 
-        title = QLabel("SecureVault Login")
+        title = QLabel("Create New Account")
         title.setAlignment(Qt.AlignCenter)
 
         self.username_input = QLineEdit()
@@ -85,38 +84,51 @@ class LoginWindow(QWidget):
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.Password)
 
-        login_btn = QPushButton("Sign In")
-        login_btn.setObjectName("primary")
-        login_btn.clicked.connect(self.login)
+        self.confirm_input = QLineEdit()
+        self.confirm_input.setPlaceholderText("Confirm Password")
+        self.confirm_input.setEchoMode(QLineEdit.Password)
 
-        signup_btn = QPushButton("Create Account")
-        signup_btn.setObjectName("secondary")
-        signup_btn.clicked.connect(self.signup)
+        create_btn = QPushButton("Create Account")
+        create_btn.setObjectName("primary")
+        create_btn.clicked.connect(self.create_account)
+
+        back_btn = QPushButton("Back to Login")
+        back_btn.setObjectName("secondary")
+        back_btn.clicked.connect(self.close)
 
         layout.addWidget(title)
         layout.addWidget(self.username_input)
         layout.addWidget(self.password_input)
-        layout.addWidget(login_btn)
-        layout.addWidget(signup_btn)
+        layout.addWidget(self.confirm_input)
+        layout.addWidget(create_btn)
+        layout.addWidget(back_btn)
 
         root.addWidget(card)
 
-    # ---------------- LOGIN ----------------
-    def login(self):
+    # -------- CREATE ACCOUNT --------
+    def create_account(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
+        confirm = self.confirm_input.text().strip()
 
-        result = authenticate_user(username, password)
+        if not username or not password or not confirm:
+            QMessageBox.warning(self, "Error", "All fields are required.")
+            return
 
-        if result:
-            user_id, key = result
-            self.vault = VaultWindow(user_id, key)
-            self.vault.show()
-            self.close()
-        else:
-            QMessageBox.warning(self, "Error", "Invalid credentials")
+        if password != confirm:
+            QMessageBox.warning(self, "Error", "Passwords do not match.")
+            return
 
-    # ---------------- SIGNUP ----------------
-    def signup(self):
-        self.signup_window = SignupWindow(self)
-        self.signup_window.show()
+        success = create_user(username, password)
+
+        if not success:
+            QMessageBox.warning(self, "Error", "Username already exists.")
+            return
+
+        QMessageBox.information(self, "Success", "Account created successfully!")
+
+        # Autofill login window
+        self.login_window.username_input.setText(username)
+        self.login_window.password_input.setText(password)
+
+        self.close()

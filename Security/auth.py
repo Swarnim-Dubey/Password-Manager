@@ -6,7 +6,26 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 from cryptography.fernet import Fernet
+from Database.db import get_user
+import hashlib
 
+
+def authenticate_user(username, password):
+    user = get_user(username)
+
+    if not user:
+        return None
+
+    user_id, stored_hash, salt = user
+
+    hashed_input = hashlib.sha256((password + salt).encode()).hexdigest()
+
+    if hashed_input == stored_hash:
+        # 🔐 Use proper Fernet-compatible key
+        key = derive_key(password)
+        return (user_id, key)
+
+    return None
 
 # ---------------- PASSWORD HASHING ----------------
 

@@ -1,88 +1,66 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt
+from GUI.settings_dialog import SettingsDialog
 
 class TitleBar(QWidget):
-    def __init__(self, parent=None, title=""):
+    def __init__(self, parent=None, title="SecureVault"):
         super().__init__(parent)
         self.parent = parent
         self.startPos = None
 
-        self.setFixedHeight(38)
-        self.setStyleSheet("""
-            background-color: #1A1A1A;
-            color: #EAEAEA;
-            font-family: Segoe UI;
-        """)
-        
+        self.setFixedHeight(36)
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(8)
+        layout.setContentsMargins(10, 0, 10, 0)
 
         self.title_label = QLabel(title)
-        self.title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         layout.addWidget(self.title_label)
         layout.addStretch()
 
-        # Minimize button
+        # SETTINGS
+        self.settings_btn = QPushButton("⚙")
+        self.settings_btn.setFixedSize(28,28)
+        self.settings_btn.clicked.connect(self.open_settings)
+        layout.addWidget(self.settings_btn)
+
+        # MIN
         self.min_btn = QPushButton("—")
-        self.min_btn.setFixedSize(28, 28)
-        self.min_btn.setCursor(Qt.PointingHandCursor)
-        self.min_btn.setStyleSheet("""
-            QPushButton { border: none; background-color: transparent; }
-            QPushButton:hover { background-color: #333333; }
-        """)
-        self.min_btn.clicked.connect(self.minimize)
+        self.min_btn.setFixedSize(28,28)
+        self.min_btn.clicked.connect(self.parent.showMinimized)
         layout.addWidget(self.min_btn)
 
-        # Maximize/Restore button
+        # MAX
         self.max_btn = QPushButton("□")
-        self.max_btn.setFixedSize(28, 28)
-        self.max_btn.setCursor(Qt.PointingHandCursor)
-        self.max_btn.setStyleSheet("""
-            QPushButton { border: none; background-color: transparent; }
-            QPushButton:hover { background-color: #333333; }
-        """)
-        self.max_btn.clicked.connect(self.maximize_restore)
+        self.max_btn.setFixedSize(28,28)
+        self.max_btn.clicked.connect(self.toggle_max)
         layout.addWidget(self.max_btn)
 
-        # Close button
+        # CLOSE
         self.close_btn = QPushButton("✕")
-        self.close_btn.setFixedSize(28, 28)
-        self.close_btn.setCursor(Qt.PointingHandCursor)
-        self.close_btn.setStyleSheet("""
-            QPushButton { border: none; background-color: transparent; color: #EAEA00; }
-            QPushButton:hover { background-color: #FF4C4C; color: white; }
-        """)
-        self.close_btn.clicked.connect(self.close_window)
+        self.close_btn.setFixedSize(28,28)
+        self.close_btn.clicked.connect(self.parent.close)
         layout.addWidget(self.close_btn)
 
-    # -------- Button actions --------
-    def minimize(self):
-        if self.parent:
-            self.parent.showMinimized()
+    def toggle_max(self):
+        if self.parent.isMaximized():
+            self.parent.showNormal()
+        else:
+            self.parent.showMaximized()
 
-    def maximize_restore(self):
-        if self.parent:
-            if self.parent.isMaximized():
-                self.parent.showNormal()
-            else:
-                self.parent.showMaximized()
+    def open_settings(self):
+        dialog = SettingsDialog(self.parent.logout)
+        dialog.exec()
 
-    def close_window(self):
-        if self.parent:
-            self.parent.close()
+    # drag window
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self.startPos = e.globalPosition().toPoint()
 
-    # -------- Drag window --------
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.startPos = event.globalPosition().toPoint()
-
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, e):
         if self.startPos:
-            delta = event.globalPosition().toPoint() - self.startPos
+            delta = e.globalPosition().toPoint() - self.startPos
             self.parent.move(self.parent.pos() + delta)
-            self.startPos = event.globalPosition().toPoint()
+            self.startPos = e.globalPosition().toPoint()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, e):
         self.startPos = None
