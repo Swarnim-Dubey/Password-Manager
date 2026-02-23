@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
 from PySide6.QtCore import Qt
-from GUI.settings_dialog import SettingsDialog
+
 
 class TitleBar(QWidget):
     def __init__(self, parent=None, title="SecureVault"):
@@ -14,30 +14,31 @@ class TitleBar(QWidget):
         layout.setContentsMargins(10, 0, 10, 0)
 
         self.title_label = QLabel(title)
+        self.title_label.setStyleSheet("font-weight: 600;")
         layout.addWidget(self.title_label)
         layout.addStretch()
 
-        # SETTINGS
+        # SETTINGS (now calls parent method directly)
         self.settings_btn = QPushButton("⚙")
-        self.settings_btn.setFixedSize(28,28)
-        self.settings_btn.clicked.connect(self.open_settings)
+        self.settings_btn.setFixedSize(28, 28)
+        self.settings_btn.clicked.connect(self.parent.open_settings)
         layout.addWidget(self.settings_btn)
 
         # MIN
         self.min_btn = QPushButton("—")
-        self.min_btn.setFixedSize(28,28)
+        self.min_btn.setFixedSize(28, 28)
         self.min_btn.clicked.connect(self.parent.showMinimized)
         layout.addWidget(self.min_btn)
 
         # MAX
         self.max_btn = QPushButton("□")
-        self.max_btn.setFixedSize(28,28)
+        self.max_btn.setFixedSize(28, 28)
         self.max_btn.clicked.connect(self.toggle_max)
         layout.addWidget(self.max_btn)
 
         # CLOSE
         self.close_btn = QPushButton("✕")
-        self.close_btn.setFixedSize(28,28)
+        self.close_btn.setFixedSize(28, 28)
         self.close_btn.clicked.connect(self.parent.close)
         layout.addWidget(self.close_btn)
 
@@ -46,10 +47,6 @@ class TitleBar(QWidget):
             self.parent.showNormal()
         else:
             self.parent.showMaximized()
-
-    def open_settings(self):
-        dialog = SettingsDialog(self.parent.logout)
-        dialog.exec()
 
     # drag window
     def mousePressEvent(self, e):
