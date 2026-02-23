@@ -174,12 +174,13 @@ def get_categories(user_id):
 
     return default_categories + user_categories
 
-def delete_all_credentials(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM credentials WHERE user_id = ?",
-        (user_id,)
-    )
-    conn.commit()
-    conn.close()
+
+# =========================
+# DELETE ALL USER CREDENTIALS
+# =========================
+def delete_all_user_credentials(user_id):
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM credentials WHERE user_id = ?",
+            (user_id,)
+        )
