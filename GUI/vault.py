@@ -2,32 +2,48 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QFrame, QListWidget,
-    QApplication, QHeaderView
+    QApplication, QHeaderView, QLineEdit,
+    QStackedWidget, QInputDialog
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QIcon
-from GUI.toggle_switch import ToggleSwitch
 from PySide6.QtWidgets import QGraphicsOpacityEffect
-from PySide6.QtCore import QPropertyAnimation
-from GUI.theme import LIGHT_THEME, DARK_THEME
+
+from GUI.toggle_switch import ToggleSwitch
 from Database.db import (
     get_credentials,
     delete_credential,
     get_categories,
-    get_username
+    get_username,
+    delete_all_user_credentials
 )
 from GUI.add_cred import AddCredentialWindow
-from GUI.settings import SettingsWindow
+from Security.auth import authenticate_user
 
 
 class VaultWindow(QWidget):
+        # ================= ADD CREDENTIAL =================
+
+    def open_add_dialog(self):
+        self.add_window = AddCredentialWindow(self.user_id, self.key)
+        self.add_window.show()
+
+        # Refresh table after dialog closes
+        self.add_window.destroyed.connect(self.refresh_after_add)
+
+    def refresh_after_add(self):
+        self.load_categories()
+        self.load_data()
+
     def __init__(self, user_id, key):
         super().__init__()
 
         self.user_id = user_id
         self.key = key
         self.credentials = []
+
         self.current_theme = "dark"
+        self.accent_color = "#238636"  # GitHub green
 
         self.setWindowTitle("VaultX")
         self.setMinimumSize(1100, 650)
@@ -41,42 +57,28 @@ class VaultWindow(QWidget):
     # ================= UI =================
 
     def init_ui(self):
-        main_layout = QHBoxLayout(self)
+        self.main_layout = QHBoxLayout(self)
 
         # Sidebar
         self.sidebar = self.create_sidebar()
-        main_layout.addWidget(self.sidebar, 1)
+        self.main_layout.addWidget(self.sidebar, 1)
 
-        # Right Side Layout
-        right_layout = QVBoxLayout()
+        # Stacked Pages
+        self.stack = QStackedWidget()
+        self.main_layout.addWidget(self.stack, 4)
 
-        # Top Bar (for toggle in corner)
-        top_bar = QHBoxLayout()
-        top_bar.addStretch()
+        # Vault Page
+        self.vault_page = self.create_vault_page()
+        self.stack.addWidget(self.vault_page)
 
-        self.theme_toggle = ToggleSwitch()
-        self.theme_toggle.setChecked(True)  # Dark default
-        self.theme_toggle.clicked = self.toggle_theme
-
-        top_bar.addWidget(self.theme_toggle)
-        right_layout.addLayout(top_bar)
-
-        # Action bar
-        self.action_bar = self.create_action_bar()
-        self.action_bar.hide()
-        right_layout.addWidget(self.action_bar)
-
-        # Table
-        self.table = self.create_table()
-        right_layout.addWidget(self.table)
-
-        main_layout.addLayout(right_layout, 4)
+        # Settings Page
+        self.settings_page = self.create_settings_page()
+        self.stack.addWidget(self.settings_page)
 
     # ================= SIDEBAR =================
 
     def create_sidebar(self):
         sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
         layout = QVBoxLayout(sidebar)
 
         title = QLabel("VaultX")
@@ -90,24 +92,13 @@ class VaultWindow(QWidget):
 
         layout.addStretch()
 
-        # + Add Credential (with icon)
-        self.add_button = QPushButton("  Add Credential")
-        self.add_button.setIcon(QIcon.fromTheme("list-add"))
+        self.add_button = QPushButton("Add Credential")
         self.add_button.clicked.connect(self.open_add_dialog)
         layout.addWidget(self.add_button)
 
-        # Settings (with icon)
-        self.settings_button = QPushButton("  Settings")
-        self.settings_button.setIcon(QIcon.fromTheme("preferences-system"))
-        self.settings_button.clicked.connect(self.open_settings)
+        self.settings_button = QPushButton("Settings")
+        self.settings_button.clicked.connect(lambda: self.switch_page(1))
         layout.addWidget(self.settings_button)
-
-        # 🌗 Animated Toggle Switch
-        # self.theme_toggle = ToggleSwitch()
-        # self.theme_toggle.setChecked(False)
-        # self.theme_toggle.clicked = self.toggle_theme
-
-        # layout.addWidget(self.theme_toggle, alignment=Qt.AlignCenter)
 
         username = get_username(self.user_id)
         user_label = QLabel(username)
@@ -115,6 +106,86 @@ class VaultWindow(QWidget):
         layout.addWidget(user_label)
 
         return sidebar
+
+    # ================= VAULT PAGE =================
+
+    def create_vault_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        # Top Bar
+        top_bar = QHBoxLayout()
+        top_bar.addStretch()
+
+        self.theme_toggle = ToggleSwitch()
+        self.theme_toggle.setChecked(True)
+        self.theme_toggle.stateChanged.connect(self.toggle_theme)
+
+        top_bar.addWidget(self.theme_toggle)
+        layout.addLayout(top_bar)
+
+        # Action Bar
+        self.action_bar = self.create_action_bar()
+        self.action_bar.hide()
+        layout.addWidget(self.action_bar)
+
+        # Table
+        self.table = self.create_table()
+        layout.addWidget(self.table)
+
+        return page
+
+    # ================= SETTINGS PAGE =================
+
+    def create_settings_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setAlignment(Qt.AlignCenter)
+
+        self.settings_card = QFrame()
+        self.settings_card.setFixedWidth(500)
+
+        card_layout = QVBoxLayout(self.settings_card)
+        card_layout.setSpacing(25)
+        card_layout.setContentsMargins(40, 40, 40, 40)
+
+        title = QLabel("Settings")
+        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        card_layout.addWidget(title)
+
+        # Theme Toggle
+        self.settings_toggle = ToggleSwitch()
+        self.settings_toggle.setChecked(True)
+        self.settings_toggle.stateChanged.connect(self.toggle_theme)
+
+        card_layout.addWidget(QLabel("Enable Dark Mode"))
+        card_layout.addWidget(self.settings_toggle)
+
+        # Delete All Button
+        delete_btn = QPushButton("Delete All Credentials")
+        delete_btn.clicked.connect(self.delete_all_credentials_from_settings)
+        card_layout.addWidget(delete_btn)
+
+        # Back Button
+        back_btn = QPushButton("Back to Vault")
+        back_btn.clicked.connect(lambda: self.switch_page(0))
+        card_layout.addWidget(back_btn)
+
+        layout.addWidget(self.settings_card)
+        return page
+
+    # ================= PAGE SWITCH ANIMATION =================
+
+    def switch_page(self, index):
+        if self.stack.currentIndex() == index:
+            return
+
+        self.stack.setCurrentIndex(index)
+
+        self.anim = QPropertyAnimation(self.stack, b"geometry")
+        self.anim.setDuration(200)
+        self.anim.setEasingCurve(QEasingCurve.OutCubic)
+        self.anim.start()
 
     # ================= TABLE =================
 
@@ -126,10 +197,12 @@ class VaultWindow(QWidget):
         table.setEditTriggers(QTableWidget.NoEditTriggers)
 
         header = table.horizontalHeader()
-        header.setDefaultAlignment(Qt.AlignCenter)
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-        table.itemSelectionChanged.connect(self.toggle_action_bar)
+        table.itemSelectionChanged.connect(
+            lambda: self.action_bar.setVisible(table.currentRow() >= 0)
+        )
+
         return table
 
     # ================= ACTION BAR =================
@@ -138,20 +211,17 @@ class VaultWindow(QWidget):
         bar = QFrame()
         layout = QHBoxLayout(bar)
 
-        self.copy_user_btn = QPushButton("Copy Username")
-        self.copy_pass_btn = QPushButton("Copy Password")
-        self.edit_btn = QPushButton("Edit")
-        self.delete_btn = QPushButton("Delete")
+        copy_user = QPushButton("Copy Username")
+        copy_pass = QPushButton("Copy Password")
+        delete_btn = QPushButton("Delete")
 
-        self.copy_user_btn.clicked.connect(self.copy_username)
-        self.copy_pass_btn.clicked.connect(self.copy_password)
-        self.edit_btn.clicked.connect(self.edit_selected)
-        self.delete_btn.clicked.connect(self.delete_selected)
+        copy_user.clicked.connect(self.copy_username)
+        copy_pass.clicked.connect(self.copy_password)
+        delete_btn.clicked.connect(self.delete_selected)
 
-        layout.addWidget(self.copy_user_btn)
-        layout.addWidget(self.copy_pass_btn)
-        layout.addWidget(self.edit_btn)
-        layout.addWidget(self.delete_btn)
+        layout.addWidget(copy_user)
+        layout.addWidget(copy_pass)
+        layout.addWidget(delete_btn)
         layout.addStretch()
 
         return bar
@@ -161,17 +231,9 @@ class VaultWindow(QWidget):
     def load_categories(self):
         self.category_list.clear()
         categories = get_categories(self.user_id)
-
-        if "All" not in categories:
-            categories.insert(0, "All")
-
         self.category_list.addItems(categories)
-        self.category_list.setCurrentRow(0)
 
     def load_data(self, category=None):
-        if category == "All":
-            category = None
-
         self.credentials = get_credentials(self.user_id, category)
         self.table.setRowCount(len(self.credentials))
 
@@ -183,11 +245,6 @@ class VaultWindow(QWidget):
 
     def filter_by_category(self, item):
         self.load_data(item.text())
-
-    # ================= ACTION VISIBILITY =================
-
-    def toggle_action_bar(self):
-        self.action_bar.setVisible(self.table.currentRow() >= 0)
 
     # ================= COPY =================
 
@@ -201,28 +258,7 @@ class VaultWindow(QWidget):
         if row >= 0:
             QApplication.clipboard().setText(self.credentials[row][3])
 
-    # ================= EDIT =================
-
-    def edit_selected(self):
-        row = self.table.currentRow()
-        if row < 0:
-            return
-
-        cred = self.credentials[row]
-
-        dialog = AddCredentialWindow(
-            self.user_id,
-            self.key,
-            self,
-            cred=cred,
-            theme=self.current_theme
-        )
-
-        if dialog.exec():
-            self.load_categories()
-            self.load_data()
-
-    # ================= DELETE =================
+    # ================= DELETE SINGLE =================
 
     def delete_selected(self):
         row = self.table.currentRow()
@@ -230,47 +266,43 @@ class VaultWindow(QWidget):
             return
 
         cred_id = self.credentials[row][0]
-        website = self.credentials[row][1]
+        delete_credential(cred_id)
+        self.load_categories()
+        self.load_data()
 
-        confirm = QMessageBox(self)
-        confirm.setWindowTitle("Confirm Delete")
-        confirm.setText(f"Delete credentials for {website}?")
-        confirm.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    # ================= DELETE ALL (SETTINGS ONLY) =================
 
-        if confirm.exec() == QMessageBox.Yes:
-            delete_credential(cred_id)
-            self.load_categories()
-            self.load_data()
-            self.action_bar.hide()
-
-    # ================= ADD =================
-
-    def open_add_dialog(self):
-        dialog = AddCredentialWindow(
-            self.user_id,
-            self.key,
+    def delete_all_credentials_from_settings(self):
+        confirm = QMessageBox.question(
             self,
-            theme=self.current_theme
+            "Warning",
+            "You are about to delete ALL credentials.\nAre you sure?",
+            QMessageBox.Yes | QMessageBox.No
         )
 
-        if dialog.exec():
+        if confirm != QMessageBox.Yes:
+            return
+
+        password, ok = QInputDialog.getText(
+            self,
+            "Master Password Required",
+            "Enter your master password:",
+            QLineEdit.Password
+        )
+
+        if not ok:
+            return
+
+        username = get_username(self.user_id)
+        auth = authenticate_user(username, password)
+
+        if auth:
+            delete_all_user_credentials(self.user_id)
             self.load_categories()
             self.load_data()
-
-    # ================= SETTINGS =================
-
-    def open_settings(self):
-        dialog = SettingsWindow(
-            self.user_id,
-            current_theme=self.current_theme,
-            parent=self
-        )
-
-        if dialog.exec():
-            self.current_theme = (
-                "dark" if dialog.theme_toggle.isChecked() else "light"
-            )
-            self.apply_theme()
+            QMessageBox.information(self, "Deleted", "All credentials deleted.")
+        else:
+            QMessageBox.warning(self, "Error", "Incorrect master password.")
 
     # ================= THEME =================
 
@@ -281,19 +313,51 @@ class VaultWindow(QWidget):
         self.apply_theme()
 
     def apply_theme(self):
-        self.effect = QGraphicsOpacityEffect(self)
-        self.setGraphicsEffect(self.effect)
-
-        self.anim = QPropertyAnimation(self.effect, b"opacity")
-        self.anim.setDuration(200)
-        self.anim.setStartValue(0.7)
-        self.anim.setEndValue(1.0)
-
-        if self.current_theme == "light":
-            self.setStyleSheet(LIGHT_THEME)
-            self.theme_toggle.setChecked(False)
+        if self.current_theme == "dark":
+            bg = "#0d1117"
+            card = "#161b22"
+            border = "#30363d"
+            text = "#c9d1d9"
         else:
-            self.setStyleSheet(DARK_THEME)
-            self.theme_toggle.setChecked(True)
+            bg = "#ffffff"
+            card = "#f6f8fa"
+            border = "#d0d7de"
+            text = "#24292f"
 
-        self.anim.start()
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: {bg};
+                color: {text};
+            }}
+
+            QFrame {{
+                background-color: {card};
+                border: 1px solid {border};
+                border-radius: 8px;
+            }}
+
+            QPushButton {{
+                background-color: {card};
+                border: 1px solid {border};
+                padding: 8px;
+                border-radius: 6px;
+            }}
+
+            QPushButton:hover {{
+                border: 1px solid {self.accent_color};
+            }}
+
+            QTableWidget {{
+                background-color: {card};
+                border: 1px solid {border};
+            }}
+
+            QListWidget {{
+                background-color: {card};
+                border: 1px solid {border};
+            }}
+        """)
+
+        # Sync both toggles
+        self.theme_toggle.setChecked(self.current_theme == "dark")
+        self.settings_toggle.setChecked(self.current_theme == "dark")
