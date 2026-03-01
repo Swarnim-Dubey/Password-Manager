@@ -21,7 +21,7 @@ It allows users to safely store and manage credentials locally with a clean and 
 
 ## 📥 Download
 
-👉 **[Download Latest Version](https://github.com/Swarnim-Dubey/YourRepoName/releases/latest)**
+👉 **[Download Latest Version](https://github.com/Swarnim-Dubey/Password-Manager/releases/latest)**
 
 ---
 
