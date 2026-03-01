@@ -1,4 +1,5 @@
 import os
+import sys
 import sqlite3
 import hashlib
 import secrets
@@ -6,8 +7,18 @@ import secrets
 # =========================
 # DATABASE PATH
 # =========================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "passwords.db")
+
+def get_db_path():
+    # Local AppData path
+    base_dir = os.path.join(os.getenv("LOCALAPPDATA"), "VaultX")
+
+    # Create folder if it doesn't exist
+    os.makedirs(base_dir, exist_ok=True)
+
+    return os.path.join(base_dir, "passwords.db")
+
+
+DB_PATH = get_db_path()
 
 
 # =========================
