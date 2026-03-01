@@ -1,65 +1,78 @@
+from PySide6.QtCore import Qt, QRect, QPropertyAnimation, QEasingCurve, Signal, Property
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt, QRect, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QPainter, QColor
 
 
 class ToggleSwitch(QWidget):
+    toggled = Signal(bool)
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setFixedSize(60, 30)
-        self._position = 3
+        self.setFixedSize(50, 25)
+
         self._checked = False
+        self._circle_position = 3
 
-        self.animation = QPropertyAnimation(self, b"position", self)
-        self.animation.setEasingCurve(QEasingCurve.OutCubic)
+        self.animation = QPropertyAnimation(self, b"circle_position")
         self.animation.setDuration(200)
+        self.animation.setEasingCurve(QEasingCurve.InOutCubic)
 
-    def mousePressEvent(self, event):
-        self._checked = not self._checked
-        self.animate()
-        self.update()
-        self.clicked()
-
-    def animate(self):
-        start = self._position
-        end = 30 if self._checked else 3
-        self.animation.stop()
-        self.animation.setStartValue(start)
-        self.animation.setEndValue(end)
-        self.animation.start()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        # Background
-        bg_color = QColor("#30363d") if self._checked else QColor("#d0d7de")
-        painter.setBrush(bg_color)
-        painter.setPen(Qt.NoPen)
-        painter.drawRoundedRect(0, 0, 60, 30, 15, 15)
-
-        # Circle
-        painter.setBrush(QColor("#ffffff"))
-        painter.drawEllipse(QRect(self._position, 3, 24, 24))
-
-    def getPosition(self):
-        return self._position
-
-    def setPosition(self, pos):
-        self._position = pos
-        self.update()
-
-    position = Property(int, getPosition, setPosition)
+    # ---------------- Checked State ----------------
 
     def isChecked(self):
         return self._checked
 
     def setChecked(self, value):
         self._checked = value
-        self._position = 30 if value else 3
+        self._circle_position = 25 if value else 3
         self.update()
 
-    def clicked(self):
-        # This will be overridden by connection
-        pass
+    # ---------------- Animation Property ----------------
+
+    def get_circle_position(self):
+        return self._circle_position
+
+    def set_circle_position(self, pos):
+        self._circle_position = pos
+        self.update()
+
+    circle_position = Property(int, get_circle_position, set_circle_position)
+
+    # ---------------- Mouse Click ----------------
+
+    def mousePressEvent(self, event):
+        self._checked = not self._checked
+
+        self.animation.stop()
+        if self._checked:
+            self.animation.setStartValue(3)
+            self.animation.setEndValue(25)
+        else:
+            self.animation.setStartValue(25)
+            self.animation.setEndValue(3)
+
+        self.animation.start()
+
+        self.toggled.emit(self._checked)
+
+        super().mousePressEvent(event)
+
+    # ---------------- Paint ----------------
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Background
+        if self._checked:
+            painter.setBrush(QColor("#238636"))
+        else:
+            painter.setBrush(QColor("#777"))
+
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(QRect(0, 0, 50, 25), 12, 12)
+
+        # Circle
+        painter.setBrush(QColor("white"))
+        painter.drawEllipse(QRect(self._circle_position, 3, 19, 19))
