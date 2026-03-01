@@ -10,3 +10,8 @@ dependencies = [
     "pyqt6>=6.10.2",
     "pyside6>=6.10.2",
 ]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.19.0",
+]
