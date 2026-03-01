@@ -1,112 +1,85 @@
-# 🔐 Password Manager (Desktop Vault)
+# 🔐 VaultX – Secure Desktop Password Manager
 
-A secure, modern desktop password manager built with Python, featuring strong encryption, a clean GUI, and local-first privacy.
-
----
-
-## 📌 Overview
-
-**Password Manager** is a lightweight yet secure desktop application that allows users to store, manage, and retrieve credentials safely using a **master password–protected encrypted vault**.
-
-All sensitive data is encrypted locally and stored in a SQLite database — **no cloud, no tracking, no external servers**.
-
-This project is designed for **personal use**, **learning secure software design**, and as a **portfolio-grade desktop application**.
+VaultX is a modern, secure, and lightweight desktop password manager built using Python and PySide6.  
+It allows users to safely store and manage credentials locally with a clean and intuitive interface.
 
 ---
 
-## 💡 Motivation
+## ✨ Features
 
-Managing multiple online accounts often leads to:
-- Password reuse  
-- Weak or predictable passwords  
-- Insecure storage practices  
+- 🔑 Secure user authentication with salted SHA-256 hashing
+- 🗂 Category-based organization (Social, Work, Finance, etc.)
+- 🔍 Filter credentials by category
+- ✏ Edit and delete saved credentials
+- 🧹 Delete all credentials option
+- 🌙 Dark mode modern UI
+- 💾 SQLite database stored securely in Windows AppData
+- 📦 Windows installer included
 
-This application solves that problem by providing a **locally encrypted vault** that only the user can unlock using a master password.
-
----
-
-## 🚀 Features
-
-### 🔐 Security
-- Master password protection using **bcrypt hashing**
-- AES-256 encryption for all stored credentials
-- Encryption keys derived from the master password
-- Base64 encoding for safe handling of encrypted data
-- Master password is **never stored in plain text**
-
-### 🖥️ Desktop Application
-- Modern GUI built with **PySide6 (Qt)**
-- Custom frameless window with animations
-- Category-based credential organization
-- Secure re-authentication before revealing passwords
-
-### 📂 Data Handling
-- Local SQLite database
-- App data stored securely in the OS user directory
-- Credential-level deletion (no accidental bulk deletes)
-- Hot-reload UI after add/delete operations
-
-### 📦 Distribution
-- Standalone `.exe` built using PyInstaller
-- Installer created with Inno Setup
-- No Python or dependencies required on target systems
 
 ---
 
-## 🛠️ Tech Stack
+## 📥 Download
 
-| Component | Technology |
-|---------|------------|
-| Language | Python |
-| GUI | PySide6 (Qt) |
-| Database | SQLite |
-| Encryption | AES-256 (Fernet) |
-| Hashing | bcrypt |
-| Encoding | Base64 |
-| Packaging | PyInstaller |
-| Installer | Inno Setup |
+👉 **[Download Latest Version](https://github.com/Swarnim-Dubey/YourRepoName/releases/latest)**
 
 ---
 
-## 🔐 Security Architecture
+## 🛠 Installation (Windows)
 
-- Master password → **bcrypt hash** → stored securely
-- Master password → **SHA-256 derived key** → AES-256 encryption
-- Credential passwords → encrypted → Base64 encoded
-- Only encrypted data is persisted in the database
-- Decryption occurs **only in memory after authentication**
+1. Download `VaultX_Setup.exe` from the Releases page.
+2. Run the installer.
+3. Follow the installation wizard.
+4. Launch VaultX from the Start Menu or Desktop.
 
-> ⚠️ Note: Base64 is not encryption — it is used only for safe storage of encrypted bytes.
-
----
-
-## 🛣️ Future Updates (Planned)
-
-The following enhancements are planned for future releases:
-
-- 🔑 Built-in strong password generator
-- ⏱ Automatic vault locking after inactivity
-- 📋 Clipboard auto-clear after copying passwords
-- 📱 Mobile companion application
-- 🎨 Theme customization (light/dark modes)
+> ⚠ Windows SmartScreen may display a warning since the application is not digitally signed.  
+> Click **More Info → Run Anyway** to continue.
 
 ---
 
-## ⚠️ Disclaimer
+## 🏗 Built With
 
-This project is intended for **educational and personal use**.  
-While strong cryptographic primitives are used, the application has **not undergone a formal security audit**.  
-Use at your own discretion.
-
----
-
-## 🙌 Author
-
-Built with care and curiosity by **ME 😂**  
-If you find this project useful, feel free to ⭐ star the repository.
+- Python
+- PySide6
+- SQLite
+- PyInstaller
+- Inno Setup
 
 ---
 
-## 📜 License
+## 🔐 Security
 
-MIT License — free to use, modify, and distribute.
+- Passwords are hashed using salted SHA-256.
+- Data is stored locally on your machine.
+- Database location:
+- C:\Users<YourUser>\AppData\Local\VaultX\
+
+
+---
+
+## 📌 Roadmap
+
+- [ ] Password encryption at rest
+- [ ] Password generator tool
+- [ ] Export/Import functionality
+- [ ] Auto-update system
+- [ ] macOS & Linux support
+
+---
+
+## 👨‍💻 Author
+
+Swarnim Dubey  
+GitHub: https://github.com/Swarnim-Dubey
+
+---
+
+## 📄 License
+
+This project is for educational and personal use.
+
+---
+
+## ⭐ Support
+
+If you like this project, consider giving it a star ⭐
