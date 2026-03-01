@@ -6,9 +6,6 @@ from PySide6.QtWidgets import (
     QStackedWidget, QInputDialog
 )
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QGraphicsOpacityEffect
-
 from GUI.toggle_switch import ToggleSwitch
 from Database.db import (
     get_credentials,
@@ -22,18 +19,6 @@ from Security.auth import authenticate_user
 
 
 class VaultWindow(QWidget):
-        # ================= ADD CREDENTIAL =================
-
-    def open_add_dialog(self):
-        self.add_window = AddCredentialWindow(self.user_id, self.key)
-        self.add_window.show()
-
-        # Refresh table after dialog closes
-        self.add_window.destroyed.connect(self.refresh_after_add)
-
-    def refresh_after_add(self):
-        self.load_categories()
-        self.load_data()
 
     def __init__(self, user_id, key):
         super().__init__()
@@ -43,7 +28,7 @@ class VaultWindow(QWidget):
         self.credentials = []
 
         self.current_theme = "dark"
-        self.accent_color = "#238636"  # GitHub green
+        self.accent_color = "#238636"
 
         self.setWindowTitle("VaultX")
         self.setMinimumSize(1100, 650)
@@ -56,22 +41,35 @@ class VaultWindow(QWidget):
 
     # ================= UI =================
 
+    # ================= ADD CREDENTIAL =================
+
+    def open_add_dialog(self):
+        self.add_window = AddCredentialWindow(
+            self.user_id,
+            self.key,
+            theme=self.current_theme
+        )
+
+        self.add_window.credential_added.connect(self.refresh_after_add)
+        self.add_window.exec()
+
+
+    def refresh_after_add(self):
+        self.load_categories()
+        self.load_data()
+
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
 
-        # Sidebar
         self.sidebar = self.create_sidebar()
         self.main_layout.addWidget(self.sidebar, 1)
 
-        # Stacked Pages
         self.stack = QStackedWidget()
         self.main_layout.addWidget(self.stack, 4)
 
-        # Vault Page
         self.vault_page = self.create_vault_page()
         self.stack.addWidget(self.vault_page)
 
-        # Settings Page
         self.settings_page = self.create_settings_page()
         self.stack.addWidget(self.settings_page)
 
@@ -113,23 +111,20 @@ class VaultWindow(QWidget):
         page = QWidget()
         layout = QVBoxLayout(page)
 
-        # Top Bar
         top_bar = QHBoxLayout()
         top_bar.addStretch()
 
         self.theme_toggle = ToggleSwitch()
         self.theme_toggle.setChecked(True)
-        self.theme_toggle.stateChanged.connect(self.toggle_theme)
+        self.theme_toggle.toggled.connect(self.on_toggle_changed)
 
         top_bar.addWidget(self.theme_toggle)
         layout.addLayout(top_bar)
 
-        # Action Bar
         self.action_bar = self.create_action_bar()
         self.action_bar.hide()
         layout.addWidget(self.action_bar)
 
-        # Table
         self.table = self.create_table()
         layout.addWidget(self.table)
 
@@ -153,20 +148,17 @@ class VaultWindow(QWidget):
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
         card_layout.addWidget(title)
 
-        # Theme Toggle
         self.settings_toggle = ToggleSwitch()
         self.settings_toggle.setChecked(True)
-        self.settings_toggle.stateChanged.connect(self.toggle_theme)
+        self.settings_toggle.toggled.connect(self.on_toggle_changed)
 
         card_layout.addWidget(QLabel("Enable Dark Mode"))
         card_layout.addWidget(self.settings_toggle)
 
-        # Delete All Button
         delete_btn = QPushButton("Delete All Credentials")
         delete_btn.clicked.connect(self.delete_all_credentials_from_settings)
         card_layout.addWidget(delete_btn)
 
-        # Back Button
         back_btn = QPushButton("Back to Vault")
         back_btn.clicked.connect(lambda: self.switch_page(0))
         card_layout.addWidget(back_btn)
@@ -174,18 +166,10 @@ class VaultWindow(QWidget):
         layout.addWidget(self.settings_card)
         return page
 
-    # ================= PAGE SWITCH ANIMATION =================
+    # ================= PAGE SWITCH =================
 
     def switch_page(self, index):
-        if self.stack.currentIndex() == index:
-            return
-
         self.stack.setCurrentIndex(index)
-
-        self.anim = QPropertyAnimation(self.stack, b"geometry")
-        self.anim.setDuration(200)
-        self.anim.setEasingCurve(QEasingCurve.OutCubic)
-        self.anim.start()
 
     # ================= TABLE =================
 
@@ -258,7 +242,7 @@ class VaultWindow(QWidget):
         if row >= 0:
             QApplication.clipboard().setText(self.credentials[row][3])
 
-    # ================= DELETE SINGLE =================
+    # ================= DELETE =================
 
     def delete_selected(self):
         row = self.table.currentRow()
@@ -269,8 +253,6 @@ class VaultWindow(QWidget):
         delete_credential(cred_id)
         self.load_categories()
         self.load_data()
-
-    # ================= DELETE ALL (SETTINGS ONLY) =================
 
     def delete_all_credentials_from_settings(self):
         confirm = QMessageBox.question(
@@ -306,10 +288,8 @@ class VaultWindow(QWidget):
 
     # ================= THEME =================
 
-    def toggle_theme(self):
-        self.current_theme = (
-            "dark" if self.current_theme == "light" else "light"
-        )
+    def on_toggle_changed(self, checked):
+        self.current_theme = "dark" if checked else "light"
         self.apply_theme()
 
     def apply_theme(self):
@@ -358,6 +338,5 @@ class VaultWindow(QWidget):
             }}
         """)
 
-        # Sync both toggles
         self.theme_toggle.setChecked(self.current_theme == "dark")
         self.settings_toggle.setChecked(self.current_theme == "dark")
