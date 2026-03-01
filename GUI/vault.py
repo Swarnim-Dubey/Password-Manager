@@ -133,37 +133,25 @@ class VaultWindow(QWidget):
     # ================= SETTINGS PAGE =================
 
     def create_settings_page(self):
+        from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
+
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setAlignment(Qt.AlignCenter)
-
-        self.settings_card = QFrame()
-        self.settings_card.setFixedWidth(500)
-
-        card_layout = QVBoxLayout(self.settings_card)
-        card_layout.setSpacing(25)
-        card_layout.setContentsMargins(40, 40, 40, 40)
 
         title = QLabel("Settings")
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        card_layout.addWidget(title)
+        layout.addWidget(title)
 
-        self.settings_toggle = ToggleSwitch()
-        self.settings_toggle.setChecked(True)
-        self.settings_toggle.toggled.connect(self.on_toggle_changed)
+        layout.addSpacing(20)
 
-        card_layout.addWidget(QLabel("Enable Dark Mode"))
-        card_layout.addWidget(self.settings_toggle)
+        # Logout Button
+        self.logout_button = QPushButton("Logout")
+        self.logout_button.setFixedHeight(40)
+        self.logout_button.clicked.connect(self.logout)
 
-        delete_btn = QPushButton("Delete All Credentials")
-        delete_btn.clicked.connect(self.delete_all_credentials_from_settings)
-        card_layout.addWidget(delete_btn)
+        layout.addWidget(self.logout_button)
+        layout.addStretch()
 
-        back_btn = QPushButton("Back to Vault")
-        back_btn.clicked.connect(lambda: self.switch_page(0))
-        card_layout.addWidget(back_btn)
-
-        layout.addWidget(self.settings_card)
         return page
 
     # ================= PAGE SWITCH =================
@@ -209,6 +197,15 @@ class VaultWindow(QWidget):
         layout.addStretch()
 
         return bar
+    
+    def logout(self):
+        self.close()
+
+        # Import here to avoid circular import
+        from GUI.login import LoginWindow
+
+        self.login_window = LoginWindow()
+        self.login_window.show()
 
     # ================= DATA =================
 
@@ -338,5 +335,8 @@ class VaultWindow(QWidget):
             }}
         """)
 
-        self.theme_toggle.setChecked(self.current_theme == "dark")
-        self.settings_toggle.setChecked(self.current_theme == "dark")
+        # Only update toggle if it exists (safe check)
+        if hasattr(self, "theme_toggle"):
+            self.theme_toggle.blockSignals(True)
+            self.theme_toggle.setChecked(self.current_theme == "dark")
+            self.theme_toggle.blockSignals(False)
