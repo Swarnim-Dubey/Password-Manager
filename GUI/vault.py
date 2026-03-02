@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QApplication, QHeaderView, QLineEdit,
     QStackedWidget, QInputDialog
 )
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt
 from GUI.toggle_switch import ToggleSwitch
 from Database.db import (
     get_credentials,
@@ -40,23 +40,6 @@ class VaultWindow(QWidget):
         self.load_data()
 
     # ================= UI =================
-
-    # ================= ADD CREDENTIAL =================
-
-    def open_add_dialog(self):
-        self.add_window = AddCredentialWindow(
-            self.user_id,
-            self.key,
-            theme=self.current_theme
-        )
-
-        self.add_window.credential_added.connect(self.refresh_after_add)
-        self.add_window.exec()
-
-
-    def refresh_after_add(self):
-        self.load_categories()
-        self.load_data()
 
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
@@ -133,8 +116,6 @@ class VaultWindow(QWidget):
     # ================= SETTINGS PAGE =================
 
     def create_settings_page(self):
-        from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
-
         page = QWidget()
         layout = QVBoxLayout(page)
 
@@ -144,12 +125,21 @@ class VaultWindow(QWidget):
 
         layout.addSpacing(20)
 
+        # Delete All Button
+        self.delete_all_btn = QPushButton("Delete All Credentials")
+        self.delete_all_btn.clicked.connect(self.delete_all_credentials_from_settings)
+        layout.addWidget(self.delete_all_btn)
+
         # Logout Button
         self.logout_button = QPushButton("Logout")
-        self.logout_button.setFixedHeight(40)
         self.logout_button.clicked.connect(self.logout)
-
         layout.addWidget(self.logout_button)
+
+        # Back Button
+        self.back_button = QPushButton("⬅ Back to Vault")
+        self.back_button.clicked.connect(lambda: self.switch_page(0))
+        layout.addWidget(self.back_button)
+
         layout.addStretch()
 
         return page
@@ -158,6 +148,21 @@ class VaultWindow(QWidget):
 
     def switch_page(self, index):
         self.stack.setCurrentIndex(index)
+
+    # ================= ADD =================
+
+    def open_add_dialog(self):
+        self.add_window = AddCredentialWindow(
+            self.user_id,
+            self.key,
+            theme=self.current_theme
+        )
+        self.add_window.credential_added.connect(self.refresh_after_add)
+        self.add_window.exec()
+
+    def refresh_after_add(self):
+        self.load_categories()
+        self.load_data()
 
     # ================= TABLE =================
 
@@ -197,13 +202,12 @@ class VaultWindow(QWidget):
         layout.addStretch()
 
         return bar
-    
+
+    # ================= LOGOUT =================
+
     def logout(self):
         self.close()
-
-        # Import here to avoid circular import
         from GUI.login import LoginWindow
-
         self.login_window = LoginWindow()
         self.login_window.show()
 
@@ -335,7 +339,6 @@ class VaultWindow(QWidget):
             }}
         """)
 
-        # Only update toggle if it exists (safe check)
         if hasattr(self, "theme_toggle"):
             self.theme_toggle.blockSignals(True)
             self.theme_toggle.setChecked(self.current_theme == "dark")

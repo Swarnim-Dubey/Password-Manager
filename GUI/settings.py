@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QPushButton, QCheckBox,
     QMessageBox, QFrame
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 
 from Database.db import delete_all_credentials
 
@@ -61,6 +61,13 @@ class SettingsWindow(QDialog):
 
         layout.addWidget(self.separator())
 
+        # ---------------- NAVIGATION ----------------
+        self.back_btn = QPushButton("⬅ Back to Vault")
+        self.back_btn.clicked.connect(self.go_back)
+        layout.addWidget(self.back_btn)
+
+        layout.addWidget(self.separator())
+
         # ---------------- ABOUT ----------------
         layout.addWidget(QLabel("About"))
 
@@ -92,7 +99,10 @@ class SettingsWindow(QDialog):
 
     def logout(self):
         QMessageBox.information(self, "Logout", "You have been logged out.")
-        self.accept()
+        self.accept()  # closes dialog and returns control
+
+    def go_back(self):
+        self.reject()  # closes settings and returns to vault
 
     def apply_theme(self):
         if self.current_theme == "dark":
