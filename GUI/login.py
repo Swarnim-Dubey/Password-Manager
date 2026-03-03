@@ -2,10 +2,11 @@ from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QFrame, QMessageBox
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPropertyAnimation
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QGraphicsOpacityEffect
 
-from Security.auth import authenticate_user   # ✅ FIXED IMPORT
-from Database.db import create_user
+from Security.auth import authenticate_user
 from GUI.vault import VaultWindow
 from GUI.signup import SignupWindow
 
@@ -15,29 +16,36 @@ class LoginWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("SecureVault")
-        self.setFixedSize(420, 520)
+        self.setMinimumSize(1000, 700)
 
+        # Remove dialog feel
+        self.setWindowFlags(Qt.Window)
+
+        # -------- Background --------
+        self.background = QLabel(self)
+        self.background.setPixmap(QPixmap("assets/login_bg.jpg"))
+        self.background.setScaledContents(True)
+
+        # -------- Styling --------
         self.setStyleSheet("""
             QWidget {
-                background-color: #0d1117;
                 font-family: "Segoe UI";
                 font-size: 14px;
-                color: #c9d1d9;
+                color: white;
             }
 
             QFrame#card {
-                background-color: #161b22;
-                border: 1px solid #30363d;
-                border-radius: 8px;
+                background-color: rgba(22, 27, 34, 220);
+                border-radius: 12px;
                 padding: 24px;
             }
 
             QLineEdit {
-                background-color: #0d1117;
+                background-color: rgba(13, 17, 23, 220);
                 border: 1px solid #30363d;
                 border-radius: 6px;
                 padding: 8px;
-                color: #c9d1d9;
+                color: white;
             }
 
             QLineEdit:focus {
@@ -64,6 +72,12 @@ class LoginWindow(QWidget):
         """)
 
         self.init_ui()
+        self.showMaximized()
+
+    # Make background cover full window
+    def resizeEvent(self, event):
+        self.background.setGeometry(0, 0, self.width(), self.height())
+        super().resizeEvent(event)
 
     def init_ui(self):
         root = QVBoxLayout(self)
@@ -71,9 +85,10 @@ class LoginWindow(QWidget):
 
         card = QFrame()
         card.setObjectName("card")
+        card.setFixedWidth(420)
 
         layout = QVBoxLayout(card)
-        layout.setSpacing(12)
+        layout.setSpacing(15)
 
         title = QLabel("SecureVault Login")
         title.setAlignment(Qt.AlignCenter)
@@ -93,6 +108,9 @@ class LoginWindow(QWidget):
         signup_btn.setObjectName("secondary")
         signup_btn.clicked.connect(self.signup)
 
+        self.password_input.returnPressed.connect(self.login)
+        self.username_input.returnPressed.connect(self.login)
+
         layout.addWidget(title)
         layout.addWidget(self.username_input)
         layout.addWidget(self.password_input)
@@ -101,7 +119,23 @@ class LoginWindow(QWidget):
 
         root.addWidget(card)
 
-    # ---------------- LOGIN ----------------
+    # 🔥 Smooth Fade Transition
+    def fade_transition(self, next_window):
+        self.effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.effect)
+
+        self.animation = QPropertyAnimation(self.effect, b"opacity")
+        self.animation.setDuration(500)
+        self.animation.setStartValue(1)
+        self.animation.setEndValue(0)
+
+        def on_finished():
+            next_window.showMaximized()
+            self.close()
+
+        self.animation.finished.connect(on_finished)
+        self.animation.start()
+
     def login(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
@@ -111,12 +145,10 @@ class LoginWindow(QWidget):
         if result:
             user_id, key = result
             self.vault = VaultWindow(user_id, key)
-            self.vault.show()
-            self.close()
+            self.fade_transition(self.vault)
         else:
             QMessageBox.warning(self, "Error", "Invalid credentials")
 
-    # ---------------- SIGNUP ----------------
     def signup(self):
         self.signup_window = SignupWindow(self)
         self.signup_window.show()
