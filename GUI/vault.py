@@ -29,10 +29,12 @@ class VaultWindow(QWidget):
         self.user_id = user_id
         self.key = key
         self.credentials = []
-
+        self.setWindowFlags(Qt.Window)
         self.current_theme = "dark"
         self.accent_color = "#238636"
 
+        # ✅ IMPORTANT — Makes it a normal app window (not dialog)
+        self.setWindowFlags(Qt.Window)
         self.setWindowTitle("VaultX")
         self.setMinimumSize(1100, 650)
 
@@ -42,7 +44,16 @@ class VaultWindow(QWidget):
         self.load_categories()
         self.load_data()
 
+        # ✅ Opens maximized (taskbar visible)
+        self.showMaximized()
+
     # ================= UI =================
+
+    def filter_by_category(self, item):
+        # item is the QListWidgetItem that was clicked
+        category = item.text()
+        # your logic to filter the vault by category
+        print(f"Filtering vault by category: {category}")
 
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
@@ -103,8 +114,8 @@ class VaultWindow(QWidget):
         self.theme_toggle = ToggleSwitch()
         self.theme_toggle.setChecked(True)
         self.theme_toggle.toggled.connect(self.on_toggle_changed)
-
         top_bar.addWidget(self.theme_toggle)
+
         layout.addLayout(top_bar)
 
         self.action_bar = self.create_action_bar()
@@ -162,7 +173,7 @@ class VaultWindow(QWidget):
         current_widget.setGraphicsEffect(fade_out)
 
         self.anim = QPropertyAnimation(fade_out, b"opacity")
-        self.anim.setDuration(200)
+        self.anim.setDuration(250)
         self.anim.setStartValue(1)
         self.anim.setEndValue(0)
 
@@ -173,7 +184,7 @@ class VaultWindow(QWidget):
             next_widget.setGraphicsEffect(fade_in)
 
             self.anim2 = QPropertyAnimation(fade_in, b"opacity")
-            self.anim2.setDuration(200)
+            self.anim2.setDuration(250)
             self.anim2.setStartValue(0)
             self.anim2.setEndValue(1)
             self.anim2.start()
@@ -237,157 +248,27 @@ class VaultWindow(QWidget):
         else:
             self.slide_action_bar(False)
 
-    # ================= ADD =================
-
-    def open_add_dialog(self):
-        self.add_window = AddCredentialWindow(
-            self.user_id,
-            self.key,
-            theme=self.current_theme
-        )
-        self.add_window.credential_added.connect(self.refresh_after_add)
-        self.add_window.exec()
-
-    def refresh_after_add(self):
-        self.load_categories()
-        self.load_data()
-
-    # ================= DATA =================
-
-    def load_categories(self):
-        self.category_list.clear()
-        categories = get_categories(self.user_id)
-        self.category_list.addItems(categories)
-
-    def load_data(self, category=None):
-        self.credentials = get_credentials(self.user_id, category)
-        self.table.setRowCount(len(self.credentials))
-
-        for row, cred in enumerate(self.credentials):
-            cred_id, website, email, password, category = cred
-
-            service_item = QTableWidgetItem(website)
-            username_item = QTableWidgetItem(email)
-            password_item = QTableWidgetItem("•••••••")
-
-            service_item.setTextAlignment(Qt.AlignCenter)
-            username_item.setTextAlignment(Qt.AlignCenter)
-            password_item.setTextAlignment(Qt.AlignCenter)
-
-            self.table.setItem(row, 0, service_item)
-            self.table.setItem(row, 1, username_item)
-            self.table.setItem(row, 2, password_item)
-
-    def filter_by_category(self, item):
-        self.load_data(item.text())
-
-    # ================= COPY =================
-
-    def copy_username(self):
-        row = self.table.currentRow()
-        if row >= 0:
-            QApplication.clipboard().setText(self.credentials[row][2])
-
-    def copy_password(self):
-        row = self.table.currentRow()
-        if row >= 0:
-            encrypted_password = self.credentials[row][3]
-            decrypted = decrypt_data(encrypted_password, self.key)
-            QGuiApplication.clipboard().setText(decrypted)
-            QMessageBox.information(self, "Copied", "Password copied to clipboard!")
-
-    # ================= DELETE =================
-
-    def delete_selected(self):
-        row = self.table.currentRow()
-        if row < 0:
-            return
-
-        reply = QMessageBox.question(
-            self,
-            "Confirm Delete",
-            "Are you sure you want to delete this credential?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if reply != QMessageBox.Yes:
-            return
-
-        cred_id = self.credentials[row][0]
-        delete_credential(cred_id)
-
-        self.load_categories()
-        self.load_data()
-
-    def delete_all_credentials_from_settings(self):
-        confirm = QMessageBox.question(
-            self,
-            "Warning",
-            "You are about to delete ALL credentials.\nAre you sure?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if confirm != QMessageBox.Yes:
-            return
-
-        password, ok = QInputDialog.getText(
-            self,
-            "Master Password Required",
-            "Enter your master password:",
-            QLineEdit.Password
-        )
-
-        if not ok:
-            return
-
-        username = get_username(self.user_id)
-        auth = authenticate_user(username, password)
-
-        if auth:
-            delete_all_user_credentials(self.user_id)
-            self.load_categories()
-            self.load_data()
-            QMessageBox.information(self, "Deleted", "All credentials deleted.")
-        else:
-            QMessageBox.warning(self, "Error", "Incorrect master password.")
-
-    # ================= EDIT =================
-
-    def edit_selected(self):
-        row = self.table.currentRow()
-        if row < 0:
-            return
-
-        cred_id, service, username, password, category = self.credentials[row]
-
-        credential_dict = {
-            "id": cred_id,
-            "service": service,
-            "username": username,
-            "password": password,
-            "category": category
-        }
-
-        app_username = get_username(self.user_id)
-
-        dialog = EditCredentialWindow(
-            app_username,
-            self.key,
-            credential_dict,
-            parent=self
-        )
-
-        if dialog.exec():
-            self.load_categories()
-            self.load_data()
-
     # ================= LOGOUT =================
 
     def logout(self):
-        self.close()
         from GUI.login import LoginWindow
+
         self.login_window = LoginWindow()
-        self.login_window.show()
+
+        effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(effect)
+
+        self.logout_anim = QPropertyAnimation(effect, b"opacity")
+        self.logout_anim.setDuration(300)
+        self.logout_anim.setStartValue(1)
+        self.logout_anim.setEndValue(0)
+
+        def show_login():
+            self.login_window.showMaximized()
+            self.close()
+
+        self.logout_anim.finished.connect(show_login)
+        self.logout_anim.start()
 
     # ================= THEME =================
 
