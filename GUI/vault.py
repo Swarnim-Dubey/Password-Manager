@@ -3,10 +3,14 @@ from PySide6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QFrame, QListWidget,
     QApplication, QHeaderView, QLineEdit,
-    QStackedWidget, QInputDialog
+    QStackedWidget, QInputDialog, QGraphicsOpacityEffect
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QGuiApplication
+
 from GUI.toggle_switch import ToggleSwitch
+from GUI.add_cred import AddCredentialWindow
+from GUI.edit_cred import EditCredentialWindow
 from Database.db import (
     get_credentials,
     delete_credential,
@@ -14,8 +18,7 @@ from Database.db import (
     get_username,
     delete_all_user_credentials
 )
-from GUI.add_cred import AddCredentialWindow
-from Security.auth import authenticate_user
+from Security.auth import authenticate_user, decrypt_data
 
 
 class VaultWindow(QWidget):
@@ -78,7 +81,7 @@ class VaultWindow(QWidget):
         layout.addWidget(self.add_button)
 
         self.settings_button = QPushButton("Settings")
-        self.settings_button.clicked.connect(lambda: self.switch_page(1))
+        self.settings_button.clicked.connect(self.toggle_settings_page)
         layout.addWidget(self.settings_button)
 
         username = get_username(self.user_id)
@@ -105,7 +108,7 @@ class VaultWindow(QWidget):
         layout.addLayout(top_bar)
 
         self.action_bar = self.create_action_bar()
-        self.action_bar.hide()
+        self.action_bar.setMaximumHeight(0)
         layout.addWidget(self.action_bar)
 
         self.table = self.create_table()
@@ -125,19 +128,16 @@ class VaultWindow(QWidget):
 
         layout.addSpacing(20)
 
-        # Delete All Button
         self.delete_all_btn = QPushButton("Delete All Credentials")
         self.delete_all_btn.clicked.connect(self.delete_all_credentials_from_settings)
         layout.addWidget(self.delete_all_btn)
 
-        # Logout Button
         self.logout_button = QPushButton("Logout")
         self.logout_button.clicked.connect(self.logout)
         layout.addWidget(self.logout_button)
 
-        # Back Button
         self.back_button = QPushButton("⬅ Back to Vault")
-        self.back_button.clicked.connect(lambda: self.switch_page(0))
+        self.back_button.clicked.connect(self.toggle_settings_page)
         layout.addWidget(self.back_button)
 
         layout.addStretch()
@@ -146,8 +146,96 @@ class VaultWindow(QWidget):
 
     # ================= PAGE SWITCH =================
 
-    def switch_page(self, index):
-        self.stack.setCurrentIndex(index)
+    def toggle_settings_page(self):
+        self.table.clearSelection()
+        self.slide_action_bar(False)
+
+        current = self.stack.currentIndex()
+        new_index = 1 if current == 0 else 0
+        self.fade_transition(new_index)
+
+    def fade_transition(self, new_index):
+        current_widget = self.stack.currentWidget()
+        next_widget = self.stack.widget(new_index)
+
+        fade_out = QGraphicsOpacityEffect(current_widget)
+        current_widget.setGraphicsEffect(fade_out)
+
+        self.anim = QPropertyAnimation(fade_out, b"opacity")
+        self.anim.setDuration(200)
+        self.anim.setStartValue(1)
+        self.anim.setEndValue(0)
+
+        def switch():
+            self.stack.setCurrentIndex(new_index)
+
+            fade_in = QGraphicsOpacityEffect(next_widget)
+            next_widget.setGraphicsEffect(fade_in)
+
+            self.anim2 = QPropertyAnimation(fade_in, b"opacity")
+            self.anim2.setDuration(200)
+            self.anim2.setStartValue(0)
+            self.anim2.setEndValue(1)
+            self.anim2.start()
+
+        self.anim.finished.connect(switch)
+        self.anim.start()
+
+    # ================= TABLE =================
+
+    def create_table(self):
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Service", "Username", "Password"])
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
+        table.itemSelectionChanged.connect(self.handle_selection_change)
+        return table
+
+    # ================= ACTION BAR =================
+
+    def create_action_bar(self):
+        bar = QFrame()
+        layout = QHBoxLayout(bar)
+
+        copy_user = QPushButton("Copy Username")
+        copy_pass = QPushButton("Copy Password")
+        edit_btn = QPushButton("Edit")
+        delete_btn = QPushButton("Delete")
+
+        copy_user.clicked.connect(self.copy_username)
+        copy_pass.clicked.connect(self.copy_password)
+        edit_btn.clicked.connect(self.edit_selected)
+        delete_btn.clicked.connect(self.delete_selected)
+
+        layout.addWidget(copy_user)
+        layout.addWidget(copy_pass)
+        layout.addWidget(edit_btn)
+        layout.addWidget(delete_btn)
+        layout.addStretch()
+
+        return bar
+
+    def slide_action_bar(self, show=True):
+        start_height = self.action_bar.maximumHeight()
+        end_height = 60 if show else 0
+
+        self.action_anim = QPropertyAnimation(self.action_bar, b"maximumHeight")
+        self.action_anim.setDuration(200)
+        self.action_anim.setStartValue(start_height)
+        self.action_anim.setEndValue(end_height)
+        self.action_anim.setEasingCurve(QEasingCurve.OutCubic)
+        self.action_anim.start()
+
+    def handle_selection_change(self):
+        if self.table.selectionModel().hasSelection():
+            self.slide_action_bar(True)
+        else:
+            self.slide_action_bar(False)
 
     # ================= ADD =================
 
@@ -164,53 +252,6 @@ class VaultWindow(QWidget):
         self.load_categories()
         self.load_data()
 
-    # ================= TABLE =================
-
-    def create_table(self):
-        table = QTableWidget()
-        table.setColumnCount(3)
-        table.setHorizontalHeaderLabels(["Service", "Username", "Password"])
-        table.setSelectionBehavior(QTableWidget.SelectRows)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-
-        table.itemSelectionChanged.connect(
-            lambda: self.action_bar.setVisible(table.currentRow() >= 0)
-        )
-
-        return table
-
-    # ================= ACTION BAR =================
-
-    def create_action_bar(self):
-        bar = QFrame()
-        layout = QHBoxLayout(bar)
-
-        copy_user = QPushButton("Copy Username")
-        copy_pass = QPushButton("Copy Password")
-        delete_btn = QPushButton("Delete")
-
-        copy_user.clicked.connect(self.copy_username)
-        copy_pass.clicked.connect(self.copy_password)
-        delete_btn.clicked.connect(self.delete_selected)
-
-        layout.addWidget(copy_user)
-        layout.addWidget(copy_pass)
-        layout.addWidget(delete_btn)
-        layout.addStretch()
-
-        return bar
-
-    # ================= LOGOUT =================
-
-    def logout(self):
-        self.close()
-        from GUI.login import LoginWindow
-        self.login_window = LoginWindow()
-        self.login_window.show()
-
     # ================= DATA =================
 
     def load_categories(self):
@@ -224,9 +265,18 @@ class VaultWindow(QWidget):
 
         for row, cred in enumerate(self.credentials):
             cred_id, website, email, password, category = cred
-            self.table.setItem(row, 0, QTableWidgetItem(website))
-            self.table.setItem(row, 1, QTableWidgetItem(email))
-            self.table.setItem(row, 2, QTableWidgetItem("•••••••"))
+
+            service_item = QTableWidgetItem(website)
+            username_item = QTableWidgetItem(email)
+            password_item = QTableWidgetItem("•••••••")
+
+            service_item.setTextAlignment(Qt.AlignCenter)
+            username_item.setTextAlignment(Qt.AlignCenter)
+            password_item.setTextAlignment(Qt.AlignCenter)
+
+            self.table.setItem(row, 0, service_item)
+            self.table.setItem(row, 1, username_item)
+            self.table.setItem(row, 2, password_item)
 
     def filter_by_category(self, item):
         self.load_data(item.text())
@@ -241,7 +291,10 @@ class VaultWindow(QWidget):
     def copy_password(self):
         row = self.table.currentRow()
         if row >= 0:
-            QApplication.clipboard().setText(self.credentials[row][3])
+            encrypted_password = self.credentials[row][3]
+            decrypted = decrypt_data(encrypted_password, self.key)
+            QGuiApplication.clipboard().setText(decrypted)
+            QMessageBox.information(self, "Copied", "Password copied to clipboard!")
 
     # ================= DELETE =================
 
@@ -250,8 +303,19 @@ class VaultWindow(QWidget):
         if row < 0:
             return
 
+        reply = QMessageBox.question(
+            self,
+            "Confirm Delete",
+            "Are you sure you want to delete this credential?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
         cred_id = self.credentials[row][0]
         delete_credential(cred_id)
+
         self.load_categories()
         self.load_data()
 
@@ -287,6 +351,44 @@ class VaultWindow(QWidget):
         else:
             QMessageBox.warning(self, "Error", "Incorrect master password.")
 
+    # ================= EDIT =================
+
+    def edit_selected(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return
+
+        cred_id, service, username, password, category = self.credentials[row]
+
+        credential_dict = {
+            "id": cred_id,
+            "service": service,
+            "username": username,
+            "password": password,
+            "category": category
+        }
+
+        app_username = get_username(self.user_id)
+
+        dialog = EditCredentialWindow(
+            app_username,
+            self.key,
+            credential_dict,
+            parent=self
+        )
+
+        if dialog.exec():
+            self.load_categories()
+            self.load_data()
+
+    # ================= LOGOUT =================
+
+    def logout(self):
+        self.close()
+        from GUI.login import LoginWindow
+        self.login_window = LoginWindow()
+        self.login_window.show()
+
     # ================= THEME =================
 
     def on_toggle_changed(self, checked):
@@ -310,36 +412,26 @@ class VaultWindow(QWidget):
                 background-color: {bg};
                 color: {text};
             }}
-
             QFrame {{
                 background-color: {card};
                 border: 1px solid {border};
                 border-radius: 8px;
             }}
-
             QPushButton {{
                 background-color: {card};
                 border: 1px solid {border};
                 padding: 8px;
                 border-radius: 6px;
             }}
-
             QPushButton:hover {{
                 border: 1px solid {self.accent_color};
             }}
-
             QTableWidget {{
                 background-color: {card};
                 border: 1px solid {border};
             }}
-
             QListWidget {{
                 background-color: {card};
                 border: 1px solid {border};
             }}
         """)
-
-        if hasattr(self, "theme_toggle"):
-            self.theme_toggle.blockSignals(True)
-            self.theme_toggle.setChecked(self.current_theme == "dark")
-            self.theme_toggle.blockSignals(False)
