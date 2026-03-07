@@ -66,7 +66,7 @@ class EditCredentialWindow(QDialog):
     # ================= LOAD DATA =================
 
     def load_existing_data(self):
-        self.service_input.setText(self.credential["service"])
+        self.service_input.setText(self.credential["website"])
         self.username_input.setText(self.credential["username"])
 
         decrypted_password = decrypt_data(
