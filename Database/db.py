@@ -27,6 +27,7 @@ DB_PATH = get_db_path()
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -142,7 +143,7 @@ def get_credentials(user_id, category=None):
                 (user_id,)
             )
 
-        return cursor.fetchall()
+        return [dict(row) for row in cursor.fetchall()]
 
 
 def delete_credential(credential_id):
