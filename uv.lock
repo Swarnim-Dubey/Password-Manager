@@ -238,6 +238,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "bcrypt" },
     { name = "cryptography" },
+    { name = "pyinstaller" },
     { name = "pyqt6" },
     { name = "pyside6" },
 ]
@@ -251,6 +252,7 @@ dev = [
 requires-dist = [
     { name = "bcrypt", specifier = ">=5.0.0" },
     { name = "cryptography", specifier = ">=46.0.5" },
+    { name = "pyinstaller", specifier = ">=6.19.0" },
     { name = "pyqt6", specifier = ">=6.10.2" },
     { name = "pyside6", specifier = ">=6.10.2" },
 ]
