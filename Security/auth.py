@@ -1,14 +1,13 @@
-import os
 import base64
 import hashlib
-
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 from cryptography.fernet import Fernet
 from Database.db import get_user
-import hashlib
 
+
+# ================= AUTH =================
 
 def authenticate_user(username, password):
     user = get_user(username)
@@ -21,31 +20,22 @@ def authenticate_user(username, password):
     hashed_input = hashlib.sha256((password + salt).encode()).hexdigest()
 
     if hashed_input == stored_hash:
-        # 🔐 Use proper Fernet-compatible key
-        key = derive_key(password)
+        key = derive_key(password, salt)
         return (user_id, key)
 
     return None
 
-# ---------------- PASSWORD HASHING ----------------
 
-def hash_password(password: str) -> bytes:
-    return hashlib.sha256(password.encode()).digest()
+# ================= KEY DERIVATION =================
 
-
-def verify_password(password: str, stored_hash: bytes) -> bool:
-    return hash_password(password) == stored_hash
-
-
-# ---------------- KEY DERIVATION ----------------
-
-def derive_key(password: str) -> bytes:
-    salt = b"password-manager-salt"
-
+def derive_key(password: str, salt: str) -> bytes:
+    """
+    Derive encryption key using user's actual salt
+    """
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=salt,
+        salt=salt.encode(),  # use stored salt
         iterations=200_000,
         backend=default_backend()
     )
@@ -54,13 +44,13 @@ def derive_key(password: str) -> bytes:
     return base64.urlsafe_b64encode(key)
 
 
-# ---------------- ENCRYPT / DECRYPT ----------------
+# ================= ENCRYPT / DECRYPT =================
 
-def encrypt_data(plain_text: str, key: bytes) -> bytes:
+def encrypt_data(plain_text: str, key: bytes) -> str:
     f = Fernet(key)
-    return f.encrypt(plain_text.encode())
+    return f.encrypt(plain_text.encode()).decode()
 
 
-def decrypt_data(cipher_text: bytes, key: bytes) -> str:
+def decrypt_data(cipher_text: str, key: bytes) -> str:
     f = Fernet(key)
-    return f.decrypt(cipher_text).decode()
+    return f.decrypt(cipher_text.encode()).decode()
