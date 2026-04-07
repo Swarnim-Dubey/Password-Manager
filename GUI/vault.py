@@ -238,9 +238,13 @@ class VaultWindow(QWidget):
     def copy_password(self):
         row = self.table.currentRow()
         if row >= 0:
-            QGuiApplication.clipboard().setText(
-                self.table.item(row, 2).text()
-            )
+            encrypted_password = self.credentials[row]["password"]
+
+            try:
+                password = decrypt_data(encrypted_password, self.key)
+            except Exception:
+                password = encrypted_password
+            QGuiApplication.clipboard().setText(password)
 
     def edit_selected(self):
         row = self.table.currentRow()
