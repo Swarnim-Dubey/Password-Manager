@@ -15,7 +15,12 @@ It allows users to safely store and manage credentials locally with a clean and 
 - 🌙 Dark mode modern UI
 - 💾 SQLite database stored securely in Windows AppData
 - 📦 Windows installer included
+---
 
+## 🔮Future Updates
+
+- 🔑 Random Password Generator
+- 👾 OPT through Email on forgetting Password 
 
 ---
 
