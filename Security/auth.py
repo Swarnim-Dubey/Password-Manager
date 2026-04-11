@@ -14,21 +14,6 @@ from Security.email_service import send_email
 
 # ================= AUTH =================
 
-# def authenticate_user(username, password):
-#     user = get_user(username)
-
-#     if not user:
-#         return None
-
-#     user_id, stored_hash, salt = user
-
-#     hashed_input = hashlib.sha256((password + salt).encode()).hexdigest()
-
-#     if hashed_input == stored_hash:
-#         key = derive_key(password, salt)
-#         return (user_id, key)
-
-#     return None
 def authenticate_user(identifier, password):
     success, username = validate_login(identifier, password)
 
