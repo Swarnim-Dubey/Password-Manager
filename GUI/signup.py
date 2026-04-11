@@ -4,8 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from Database.db import create_user
-
+from Database.users import create_user
 
 class SignupWindow(QWidget):
     def __init__(self, login_window):
@@ -14,7 +13,7 @@ class SignupWindow(QWidget):
         self.login_window = login_window
 
         self.setWindowTitle("Create Account")
-        self.setFixedSize(420, 520)
+        self.setFixedSize(420, 550)
 
         self.setStyleSheet("""
             QWidget {
@@ -80,6 +79,9 @@ class SignupWindow(QWidget):
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
 
+        self.email_input = QLineEdit()
+        self.email_input.setPlaceholderText("Email")
+
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.Password)
@@ -98,6 +100,7 @@ class SignupWindow(QWidget):
 
         layout.addWidget(title)
         layout.addWidget(self.username_input)
+        layout.addWidget(self.email_input)
         layout.addWidget(self.password_input)
         layout.addWidget(self.confirm_input)
         layout.addWidget(create_btn)
@@ -108,26 +111,31 @@ class SignupWindow(QWidget):
     # -------- CREATE ACCOUNT --------
     def create_account(self):
         username = self.username_input.text().strip()
+        email = self.email_input.text().strip()
         password = self.password_input.text().strip()
         confirm = self.confirm_input.text().strip()
 
-        if not username or not password or not confirm:
+        if not username or not email or not password or not confirm:
             QMessageBox.warning(self, "Error", "All fields are required.")
+            return
+
+        if "@" not in email or "." not in email:
+            QMessageBox.warning(self, "Error", "Enter a valid email.")
             return
 
         if password != confirm:
             QMessageBox.warning(self, "Error", "Passwords do not match.")
             return
 
-        success = create_user(username, password)
+        success, message = create_user(username, password, email)
 
         if not success:
-            QMessageBox.warning(self, "Error", "Username already exists.")
+            QMessageBox.warning(self, "Error", message)
             return
 
         QMessageBox.information(self, "Success", "Account created successfully!")
 
-        # Autofill login window
+        # Autofill login
         self.login_window.username_input.setText(username)
         self.login_window.password_input.setText(password)
 
