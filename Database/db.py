@@ -1,5 +1,4 @@
 import os
-import sys
 import sqlite3
 import hashlib
 import secrets
@@ -9,12 +8,8 @@ import secrets
 # =========================
 
 def get_db_path():
-    # Local AppData path
     base_dir = os.path.join(os.getenv("LOCALAPPDATA"), "VaultX")
-
-    # Create folder if it doesn't exist
     os.makedirs(base_dir, exist_ok=True)
-
     return os.path.join(base_dir, "passwords.db")
 
 
@@ -38,17 +33,20 @@ def init_db():
     with get_connection() as conn:
         cursor = conn.cursor()
 
-        # Users table
+        # USERS TABLE ✅ FIXED
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                salt TEXT NOT NULL,
-                password_hash TEXT NOT NULL
+                username TEXT UNIQUE,
+                email TEXT UNIQUE,
+                password TEXT,
+                salt TEXT,
+                otp TEXT,
+                otp_expiry INTEGER
             )
         """)
 
-        # Credentials table
+        # CREDENTIALS TABLE ✅ FK WORKING
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS credentials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,38 +72,92 @@ def hash_password(password, salt):
 # =========================
 # USER FUNCTIONS
 # =========================
-def create_user(username, password):
+def create_user(username, email, password):
     salt = secrets.token_hex(16)
     password_hash = hash_password(password, salt)
 
     try:
         with get_connection() as conn:
             conn.execute(
-                "INSERT INTO users (username, salt, password_hash) VALUES (?, ?, ?)",
-                (username, salt, password_hash)
+                """
+                INSERT INTO users (username, email, password, salt)
+                VALUES (?, ?, ?, ?)
+                """,
+                (username, email, password_hash, salt)
             )
-        return True
+        return True, "User created successfully"
+
     except sqlite3.IntegrityError:
-        return False
+        return False, "Username or Email already exists"
 
 
-def get_user(username):
+# ✅ LOGIN SUPPORT (username OR email)
+def get_user_by_identifier(identifier):
     with get_connection() as conn:
         cursor = conn.execute(
-            "SELECT id, password_hash, salt FROM users WHERE username = ?",
-            (username,)
+            """
+            SELECT id, username, email, password, salt
+            FROM users
+            WHERE username = ? OR email = ?
+            """,
+            (identifier, identifier)
         )
         return cursor.fetchone()
 
 
-def get_username(user_id):
+def get_user_by_email(email):
     with get_connection() as conn:
         cursor = conn.execute(
-            "SELECT username FROM users WHERE id = ?",
-            (user_id,)
+            """
+            SELECT id, username, email, otp, otp_expiry
+            FROM users
+            WHERE email = ?
+            """,
+            (email,)
         )
-        row = cursor.fetchone()
-        return row[0] if row else "Unknown User"
+        return cursor.fetchone()
+
+
+def update_password(email, new_password):
+    salt = secrets.token_hex(16)
+    password_hash = hash_password(new_password, salt)
+
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET password = ?, salt = ?
+            WHERE email = ?
+            """,
+            (password_hash, salt, email)
+        )
+
+
+# =========================
+# OTP FUNCTIONS
+# =========================
+def save_otp(email, otp, expiry):
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET otp = ?, otp_expiry = ?
+            WHERE email = ?
+            """,
+            (otp, expiry, email)
+        )
+
+
+def clear_otp(email):
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET otp = NULL, otp_expiry = NULL
+            WHERE email = ?
+            """,
+            (email,)
+        )
 
 
 # =========================
@@ -196,3 +248,4 @@ def delete_all_user_credentials(user_id):
             "DELETE FROM credentials WHERE user_id = ?",
             (user_id,)
         )
+        
