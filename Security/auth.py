@@ -4,27 +4,32 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 from cryptography.fernet import Fernet
-# from Database.db import get_user
-from Database.users import (
-    get_user_by_email, save_otp, clear_otp, update_password, validate_login
+# from Database.db import create_user
+from Database.db import (
+    get_user_by_email, save_otp, clear_otp, update_password, get_user_by_identifier, hash_password
 )
 from Security.otp_manager import generate_otp, get_expiry_time, is_otp_valid
 from Security.email_service import send_email
+from Database.db import get_user_by_identifier, hash_password
 
 
 # ================= AUTH =================
 
 def authenticate_user(identifier, password):
-    success, username = validate_login(identifier, password)
+    user = get_user_by_identifier(identifier)
 
-    if not success:
+    if not user:
         return None
 
-    # generate key from password
-    key = hashlib.sha256(password.encode()).digest()
-    key = base64.urlsafe_b64encode(key)
+    user_id = user["id"]
+    stored_hash = user["password"]
+    salt = user["salt"]
 
-    return username, key
+    if hash_password(password, salt) == stored_hash:
+        key = derive_key(password, salt)
+        return (user_id, key)
+
+    return None
 
 
 # ================= KEY DERIVATION =================

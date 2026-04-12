@@ -2,7 +2,7 @@ import smtplib
 from email.message import EmailMessage
 
 email_address = "vaultxacc123@gmail.com"
-email_app_password = " " # add your email app-password here
+email_app_password = "ykkn gruu atks xtzs" # add your email app-password here
 
 def send_email(to_email, subject, body):
     msg = EmailMessage()
