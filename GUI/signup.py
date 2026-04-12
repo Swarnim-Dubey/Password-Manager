@@ -4,7 +4,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from Database.users import create_user
+# from Database.users import create_user
+from Database.db import create_user
 
 class SignupWindow(QWidget):
     def __init__(self, login_window):
@@ -127,7 +128,7 @@ class SignupWindow(QWidget):
             QMessageBox.warning(self, "Error", "Passwords do not match.")
             return
 
-        success, message = create_user(username, password, email)
+        success, message = create_user(username, email, password)
 
         if not success:
             QMessageBox.warning(self, "Error", message)

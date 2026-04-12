@@ -14,7 +14,7 @@ from Database.db import (
     get_credentials,
     delete_credential,
     get_categories,
-    get_username,
+    get_user_by_email,
     delete_all_user_credentials
 )
 from Security.auth import decrypt_data
@@ -86,7 +86,7 @@ class VaultWindow(QWidget):
         self.settings_button.clicked.connect(self.toggle_settings_page)
         layout.addWidget(self.settings_button)
 
-        username = get_username(self.user_id)
+        username = get_user_by_email(self.user_id)
         user_label = QLabel(username)
         user_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(user_label)
@@ -256,11 +256,6 @@ class VaultWindow(QWidget):
         dialog = EditCredentialWindow(cred_id, self.user_id, self.key)
         dialog.exec()
 
-        self.load_data()
-
-        cred_id = self.credentials[row][0]
-        dialog = EditCredentialWindow(cred_id, self.user_id, self.key)
-        dialog.exec()
         self.load_data()
 
     def delete_selected(self):
