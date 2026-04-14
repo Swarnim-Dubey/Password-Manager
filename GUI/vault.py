@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QFrame, QListWidget,
-    QHeaderView, QStackedWidget, QGraphicsOpacityEffect
+    QHeaderView, QStackedWidget
 )
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QGuiApplication
@@ -14,7 +14,6 @@ from Database.db import (
     get_credentials,
     delete_credential,
     get_categories,
-    get_user_by_email,
     delete_all_user_credentials
 )
 from Security.auth import decrypt_data
@@ -42,7 +41,16 @@ class VaultWindow(QWidget):
         self.load_data()
 
         self.showMaximized()
-        # print("Vault key:", self.key)
+
+    # ================= SAFE DECRYPT =================
+
+    def safe_decrypt(self, value):
+        try:
+            if isinstance(value, str) and value.startswith("gAAAA"):
+                return decrypt_data(value, self.key)
+            return value
+        except:
+            return "⚠️ Error"
 
     # ================= UI =================
 
@@ -85,11 +93,6 @@ class VaultWindow(QWidget):
         self.settings_button = QPushButton("Settings")
         self.settings_button.clicked.connect(self.toggle_settings_page)
         layout.addWidget(self.settings_button)
-
-        username = get_user_by_email(self.user_id)
-        user_label = QLabel(username)
-        user_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(user_label)
 
         return sidebar
 
@@ -164,8 +167,6 @@ class VaultWindow(QWidget):
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
-        # Center align headers
         table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
 
         table.itemSelectionChanged.connect(self.handle_selection_change)
@@ -176,7 +177,6 @@ class VaultWindow(QWidget):
 
     def load_data(self):
         self.credentials = get_credentials(self.user_id)
-
         self.table.setRowCount(0)
 
         if not self.credentials:
@@ -186,29 +186,21 @@ class VaultWindow(QWidget):
 
         for row, cred in enumerate(self.credentials):
             try:
-                cred_id = cred["id"]
                 website = cred["website"]
-                encrypted_username = cred["email"]
-                encrypted_password = cred["password"]
 
-                try:
-                    username = decrypt_data(encrypted_username, self.key)
-                except Exception:
-                    username = encrypted_username
+                username = self.safe_decrypt(cred["email"])
+                password = self.safe_decrypt(cred["password"])
 
-                try:
-                    password = decrypt_data(encrypted_password, self.key)
-                except Exception:
-                    password = encrypted_password
-
-                # Mask password
                 masked_password = "•" * len(password)
 
                 website_item = QTableWidgetItem(str(website))
                 username_item = QTableWidgetItem(str(username))
                 password_item = QTableWidgetItem(masked_password)
 
-                # Center alignment
+                # Store real values
+                username_item.setData(Qt.UserRole, username)
+                password_item.setData(Qt.UserRole, password)
+
                 website_item.setTextAlignment(Qt.AlignCenter)
                 username_item.setTextAlignment(Qt.AlignCenter)
                 password_item.setTextAlignment(Qt.AlignCenter)
@@ -220,31 +212,29 @@ class VaultWindow(QWidget):
             except Exception as e:
                 print("Error loading credential:", e)
 
+    # ================= CATEGORY =================
+
     def load_categories(self):
         self.category_list.clear()
         categories = get_categories(self.user_id)
         for cat in categories:
             self.category_list.addItem(cat)
 
-    # ================= ACTIONS =================
+    # ================= COPY =================
 
     def copy_username(self):
         row = self.table.currentRow()
         if row >= 0:
-            QGuiApplication.clipboard().setText(
-                self.table.item(row, 1).text()
-            )
+            username = self.table.item(row, 1).data(Qt.UserRole)
+            QGuiApplication.clipboard().setText(username)
 
     def copy_password(self):
         row = self.table.currentRow()
         if row >= 0:
-            encrypted_password = self.credentials[row]["password"]
-
-            try:
-                password = decrypt_data(encrypted_password, self.key)
-            except Exception:
-                password = encrypted_password
+            password = self.table.item(row, 2).data(Qt.UserRole)
             QGuiApplication.clipboard().setText(password)
+
+    # ================= EDIT / DELETE =================
 
     def edit_selected(self):
         row = self.table.currentRow()
@@ -265,7 +255,7 @@ class VaultWindow(QWidget):
 
         reply = QMessageBox.question(
             self,
-            "⚠️ Delete ⚠️",
+            "Delete",
             "Are you sure you want to delete this credential?",
             QMessageBox.Yes | QMessageBox.No
         )
@@ -292,8 +282,6 @@ class VaultWindow(QWidget):
 
     def filter_by_category(self, item):
         category = item.text()
-
-        # Fetch filtered credentials
         self.credentials = get_credentials(self.user_id, category)
 
         self.table.setRowCount(0)
@@ -306,24 +294,18 @@ class VaultWindow(QWidget):
         for row, cred in enumerate(self.credentials):
             try:
                 website = cred["website"]
-                encrypted_username = cred["email"]
-                encrypted_password = cred["password"]
 
-                try:
-                    username = decrypt_data(encrypted_username, self.key)
-                except Exception:
-                    username = encrypted_username
-
-                try:
-                    password = decrypt_data(encrypted_password, self.key)
-                except Exception:
-                    password = encrypted_password
+                username = self.safe_decrypt(cred["email"])
+                password = self.safe_decrypt(cred["password"])
 
                 masked_password = "•" * len(password)
 
                 website_item = QTableWidgetItem(website)
                 username_item = QTableWidgetItem(username)
                 password_item = QTableWidgetItem(masked_password)
+
+                username_item.setData(Qt.UserRole, username)
+                password_item.setData(Qt.UserRole, password)
 
                 website_item.setTextAlignment(Qt.AlignCenter)
                 username_item.setTextAlignment(Qt.AlignCenter)
@@ -377,13 +359,11 @@ class VaultWindow(QWidget):
         self.action_anim.setEasingCurve(QEasingCurve.OutCubic)
         self.action_anim.start()
 
-    # ================= PAGE SWITCH =================
+    # ================= NAV =================
 
     def toggle_settings_page(self):
         current = self.stack.currentIndex()
         self.stack.setCurrentIndex(1 if current == 0 else 0)
-
-    # ================= LOGOUT =================
 
     def logout(self):
         from GUI.login import LoginWindow
@@ -412,48 +392,11 @@ class VaultWindow(QWidget):
             header = "#eaeef2"
 
         self.setStyleSheet(f"""
-            QWidget {{
-                background-color: {bg};
-                color: {text};
-            }}
-
-            QFrame {{
-                background-color: {card};
-                border: 1px solid {border};
-                border-radius: 8px;
-            }}
-
-            QPushButton {{
-                background-color: {card};
-                border: 1px solid {border};
-                padding: 8px;
-                border-radius: 6px;
-                color: {text};
-            }}
-
-            QPushButton:hover {{
-                border: 1px solid {self.accent_color};
-            }}
-
-            QTableWidget {{
-                background-color: {card};
-                border: 1px solid {border};
-                gridline-color: {border};
-                color: {text};
-            }}
-
-            QHeaderView::section {{
-                background-color: {header};
-                border: 1px solid {border};
-                padding: 6px;
-                color: {text};
-            }}
-
-            QListWidget {{
-                background-color: {card};
-                border: 1px solid {border};
-                color: {text};
-            }}
+            QWidget {{ background-color: {bg}; color: {text}; }}
+            QFrame {{ background-color: {card}; border: 1px solid {border}; border-radius: 8px; }}
+            QPushButton {{ background-color: {card}; border: 1px solid {border}; padding: 8px; border-radius: 6px; }}
+            QPushButton:hover {{ border: 1px solid {self.accent_color}; }}
+            QTableWidget {{ background-color: {card}; border: 1px solid {border}; }}
+            QHeaderView::section {{ background-color: {header}; border: 1px solid {border}; padding: 6px; }}
+            QListWidget {{ background-color: {card}; border: 1px solid {border}; }}
         """)
-    
-        # print("Vault key:", self.key)
