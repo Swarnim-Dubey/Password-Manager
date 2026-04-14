@@ -21,13 +21,12 @@ def authenticate_user(identifier, password):
     if not user:
         return None
 
-    user_id = user["id"]
     stored_hash = user["password"]
     salt = user["salt"]
 
     if hash_password(password, salt) == stored_hash:
-        key = derive_key(password, salt)
-        return (user_id, key)
+        key = user["encryption_key"].encode()
+        return (user["id"], key)
 
     return None
 
@@ -64,7 +63,7 @@ def decrypt_data(cipher_text: str, key: bytes) -> str:
 # ---------- SEND OTP ----------
 
 def send_otp_to_email(email):
-    username, user = get_user_by_email(email)
+    user = get_user_by_email(email)
 
     if not user:
         return False, "User does not exist"
@@ -90,7 +89,7 @@ This OTP will expire in 5 minutes.
 # ---------- VERIFY OTP ----------
 
 def verify_otp(email, entered_otp):
-    username, user = get_user_by_email(email)
+    user = get_user_by_email(email)
 
     if not user:
         return False, "User not found"
