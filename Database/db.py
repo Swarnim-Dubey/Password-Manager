@@ -2,6 +2,7 @@ import os
 import sqlite3
 import hashlib
 import secrets
+from cryptography.fernet import Fernet
 
 # =========================
 # DATABASE PATH
@@ -41,6 +42,7 @@ def init_db():
                 email TEXT UNIQUE,
                 password TEXT,
                 salt TEXT,
+                encryption_key TEXT,
                 otp TEXT,
                 otp_expiry INTEGER
             )
@@ -76,14 +78,16 @@ def create_user(username, email, password):
     salt = secrets.token_hex(16)
     password_hash = hash_password(password, salt)
 
+    encryption_key = Fernet.generate_key().decode()
+
     try:
         with get_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO users (username, email, password, salt)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO users (username, email, password, salt, encryption_key)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (username, email, password_hash, salt)
+                (username, email, password_hash, salt, encryption_key)
             )
         return True, "User created successfully"
 
