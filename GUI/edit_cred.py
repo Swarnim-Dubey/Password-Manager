@@ -19,7 +19,7 @@ class EditCredentialWindow(QDialog):
         self.credential = None
 
         self.setWindowTitle("Edit Credential")
-        self.setFixedSize(400, 420)
+        self.setFixedSize(400, 450)
 
         self.setStyleSheet("""
             QDialog {
@@ -68,6 +68,16 @@ class EditCredentialWindow(QDialog):
         self.init_ui()
         self.load_existing_data()
 
+    # ================= SAFE DECRYPT =================
+
+    def safe_decrypt(self, value):
+        try:
+            if isinstance(value, str) and value.startswith("gAAAA"):
+                return decrypt_data(value, self.key)
+            return value
+        except Exception:
+            return "⚠️ Error"
+
     # ================= UI =================
 
     def init_ui(self):
@@ -95,6 +105,15 @@ class EditCredentialWindow(QDialog):
         self.category_dropdown = QComboBox()
         layout.addWidget(self.category_dropdown)
 
+        # Custom Category Input (hidden initially)
+        self.custom_category_input = QLineEdit()
+        self.custom_category_input.setPlaceholderText("Enter custom category")
+        self.custom_category_input.hide()
+        layout.addWidget(self.custom_category_input)
+
+        # Detect dropdown change
+        self.category_dropdown.currentTextChanged.connect(self.handle_category_change)
+
         # Buttons
         btn_layout = QHBoxLayout()
 
@@ -112,6 +131,14 @@ class EditCredentialWindow(QDialog):
 
         layout.addLayout(btn_layout)
 
+    # ================= CATEGORY HANDLER =================
+
+    def handle_category_change(self, text):
+        if text == "Other":
+            self.custom_category_input.show()
+        else:
+            self.custom_category_input.hide()
+
     # ================= LOAD DATA =================
 
     def load_existing_data(self):
@@ -128,8 +155,8 @@ class EditCredentialWindow(QDialog):
         # Fill fields
         self.service_input.setText(self.credential["website"])
 
-        decrypted_username = decrypt_data(self.credential["email"], self.key)
-        decrypted_password = decrypt_data(self.credential["password"], self.key)
+        decrypted_username = self.safe_decrypt(self.credential["email"])
+        decrypted_password = self.safe_decrypt(self.credential["password"])
 
         self.username_input.setText(decrypted_username)
         self.password_input.setText(decrypted_password)
@@ -140,14 +167,15 @@ class EditCredentialWindow(QDialog):
 
         current_category = self.credential["category"]
 
-        # Set current category as selected
         index = self.category_dropdown.findText(current_category)
+
         if index >= 0:
             self.category_dropdown.setCurrentIndex(index)
         else:
-            # If custom category not in list
-            self.category_dropdown.addItem(current_category)
-            self.category_dropdown.setCurrentText(current_category)
+            # Custom category
+            self.category_dropdown.setCurrentText("Other")
+            self.custom_category_input.show()
+            self.custom_category_input.setText(current_category)
 
     # ================= SAVE =================
 
@@ -155,9 +183,14 @@ class EditCredentialWindow(QDialog):
         service = self.service_input.text().strip()
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
-        category = self.category_dropdown.currentText().strip()
 
-        if not service or not username or not password:
+        # Handle category
+        if self.category_dropdown.currentText() == "Other":
+            category = self.custom_category_input.text().strip()
+        else:
+            category = self.category_dropdown.currentText().strip()
+
+        if not service or not username or not password or not category:
             QMessageBox.warning(self, "Error", "All fields are required.")
             return
 
