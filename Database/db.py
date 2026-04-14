@@ -34,7 +34,6 @@ def init_db():
     with get_connection() as conn:
         cursor = conn.cursor()
 
-        # USERS TABLE ✅ FIXED
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +47,6 @@ def init_db():
             )
         """)
 
-        # CREDENTIALS TABLE ✅ FK WORKING
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS credentials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,12 +93,11 @@ def create_user(username, email, password):
         return False, "Username or Email already exists"
 
 
-# ✅ LOGIN SUPPORT (username OR email)
 def get_user_by_identifier(identifier):
     with get_connection() as conn:
         cursor = conn.execute(
             """
-            SELECT id, username, email, password, salt
+            SELECT id, username, email, password, salt, encryption_key
             FROM users
             WHERE username = ? OR email = ?
             """,
